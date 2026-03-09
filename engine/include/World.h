@@ -99,6 +99,9 @@ namespace e
         void UnloadAllChunks();
         Chunk* GetChunk(const glm::ivec3& chunkPos);
 
+        //Debug
+        int GetLoadedChunkCount() const { return (int)chunks.size(); }
+
         // Helper to get block at any world coordinate
         uint8_t GetBlock(int x, int y, int z);
         void SetBlock(int x, int y, int z, uint8_t type);

@@ -18,6 +18,7 @@ namespace e
         void Unbind() const;
 
         void SetUniformFloat3(const std::string& name, const glm::vec3& value);
+        void SetUniformFloat4(const std::string& name, const glm::vec4& value);
         void SetUniformMat4(const std::string& name, const glm::mat4& value);
         void SetUniformFloat(const std::string& name, float value);
         

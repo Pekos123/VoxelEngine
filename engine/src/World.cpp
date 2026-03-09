@@ -158,7 +158,6 @@ namespace e
 
         timeSinceLastUnload += Renderer::deltaTime;
         if (timeSinceLastUnload > 1.0f) { // Unload chunks every 1 second
-            std::cout << "Current loaded chunks: " << chunks.size() << std::endl;
             UnloadChunks(cameraPos, renderDistance, chunks);
             timeSinceLastUnload = 0.0f;
         }
@@ -171,7 +170,6 @@ namespace e
                     if (abs(x) != r && abs(z) != r) continue;
                     glm::ivec3 pos((camChunkX + x) * CHUNK_SIZE, 0, (camChunkZ + z) * CHUNK_SIZE);
                     if (chunks.find(pos) == chunks.end()) {
-                        std::cout << "Current loaded chunks: " << chunks.size() << std::endl;
                         LoadChunk(pos);
                         chunks[pos].GenerateMesh(this);
                         glm::ivec3 neighbors[] = {
