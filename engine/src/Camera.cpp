@@ -47,8 +47,25 @@ namespace e
         glfwSetCursorPos(window->GetGLFWwindow(), (double)window->GetWidth() / 2, (double)window->GetHeight() / 2);
     }
 
+    static bool foccusedAlreadyPressed = false;
     void Camera::Inputs()
     {
+        if(glfwGetKey(window->GetGLFWwindow(), GLFW_KEY_ESCAPE) == GLFW_PRESS && !foccusedAlreadyPressed)
+        {
+
+            foccusedAlreadyPressed = true;
+            foccused = !foccused;
+            std::cout << foccused << std::endl;
+            if(foccused)
+                glfwSetInputMode(window->GetGLFWwindow(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+            else
+                glfwSetInputMode(window->GetGLFWwindow(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+        
+        }
+        else if(glfwGetKey(window->GetGLFWwindow(), GLFW_KEY_ESCAPE) == GLFW_RELEASE && foccusedAlreadyPressed) foccusedAlreadyPressed = false;
+        
+        if(!foccused) return; 
+
         // Movement keys
         if(glfwGetKey(window->GetGLFWwindow(), GLFW_KEY_W) == GLFW_PRESS)
             position += speed * orientation * Renderer::deltaTime;
@@ -62,6 +79,7 @@ namespace e
 		    position += speed * up * Renderer::deltaTime;
 	    if (glfwGetKey(window->GetGLFWwindow(), GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS)
 		    position += speed * -up * Renderer::deltaTime;
+
 
         // Speed boost
         if(glfwGetKey(window->GetGLFWwindow(), GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)

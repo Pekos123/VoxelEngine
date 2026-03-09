@@ -62,7 +62,9 @@ After building, you can run the `sandbox` executable located in the build output
 ## 🎮 Sandbox Controls
 
 - **W/A/S/D**: Move the camera.
+- **ESC**: Focus/Unfocues window game.
 - **Mouse**: Rotate the camera view.
+- **Left Click/Right Click**: Remove/Place blocks.
 - **ImGui Windows**: Adjust object colors, light position, and camera sensitivity in real-time.
 
 ## 📄 License

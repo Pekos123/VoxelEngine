@@ -1,6 +1,8 @@
 #ifndef CAMERA_H
 #define CAMERA_H
 
+#include <iostream>
+
 #include "glm/glm.hpp"
 #include "glm/gtc/matrix_transform.hpp"
 #include "glm/gtc/type_ptr.hpp"
@@ -19,6 +21,7 @@ namespace e
         private:
             e::Window* window;
 
+            bool foccused = true;
         public:
             glm::vec3 position;
             glm::vec3 orientation = glm::vec3(0.0f, 0.0f, -1.0f);
