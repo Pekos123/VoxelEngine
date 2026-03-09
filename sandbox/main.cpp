@@ -284,9 +284,9 @@ public:
         if (objShader) {
             objShader->Bind();
             
-            glm::mat4 viewProj = camera.GetViewProjectionMatrix(45.0f, 0.1f, 1000.0f);
+            glm::mat4 viewProj = camera.GetViewProjectionMatrix(45.0f, 0.3f, 1000.0f);
             objShader->SetUniformMat4("u_ViewProj", viewProj);
-            
+
             objShader->SetUniformFloat3("lightPos", lightPos);
             objShader->SetUniformFloat3("viewPos", camera.position);
             objShader->SetUniformFloat3("lightColor", { 1.0f, 1.0f, 1.0f });

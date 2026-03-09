@@ -251,20 +251,25 @@ namespace e
     void World::UnloadAllChunks() { chunks.clear(); }
 
     void World::Draw(const std::shared_ptr<Shader>& shader, const glm::vec3& cameraPos, const glm::vec3& cameraDir, float renderDistance)
-    {
+    {   
         float renderDistSq = renderDistance * renderDistance;
+
+        // The "Forward" vector of the camera
+        glm::vec3 look = glm::normalize(cameraDir);
+
         for (auto& pair : chunks) {
             Chunk& chunk = pair.second;
-            glm::vec3 chunkCenter = glm::vec3(chunk.position.x + CHUNK_SIZE / 2.0f, CHUNK_SIZE / 2.0f, chunk.position.z + CHUNK_SIZE / 2.0f);
-    
-            glm::vec3 dirToChunk = glm::normalize(chunkCenter - cameraPos);
-            float dot = glm::dot(cameraDir, dirToChunk);
 
-            if(dot < -0.2f) continue;
+            glm::vec3 chunkPos = glm::vec3(chunk.position);
+            glm::vec3 chunkCenter = glm::vec3(chunk.position.x + CHUNK_SIZE / 2.0f, CHUNK_SIZE / 2.0f, chunk.position.z + CHUNK_SIZE / 2.0f);
+
+            // point to plane
+            glm::vec3 v = chunkCenter - cameraPos;
+            if (glm::dot(v, look) < -CHUNK_SIZE) continue; // Subtract CHUNK_SIZE as a safety margin
 
             float distSq = glm::dot(cameraPos - chunkCenter, cameraPos - chunkCenter);
+
             if (distSq < renderDistSq && chunk.vertexCount > 0) {
-                shader->SetUniformMat4("u_Model", glm::mat4(1.0f)); 
                 shader->SetUniformFloat3("u_ChunkPos", glm::vec3(chunk.position));
                 Renderer::Draw(chunk.vao, (uint32_t)chunk.vertexCount);
             }
