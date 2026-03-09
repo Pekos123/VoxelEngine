@@ -292,7 +292,7 @@ public:
             objShader->SetUniformFloat3("lightColor", { 1.0f, 1.0f, 1.0f });
             objShader->SetUniformFloat3("objectColor", objectColor);
 
-            world->Draw(objShader, camera.position, renderDistance);
+            world->Draw(objShader, camera.position, camera.orientation, renderDistance);
             DrawOutline();
         }
         

@@ -89,7 +89,7 @@ namespace e
     public:
         void GenerateWorld(int worldSizeInChunks);
         void Update(const glm::vec3& cameraPos, float renderDistance);
-        void Draw(const std::shared_ptr<Shader>& shader, const glm::vec3& cameraPos, float renderDistance);
+        void Draw(const std::shared_ptr<Shader>& shader, const glm::vec3& cameraPos, const glm::vec3& cameraDir, float renderDistance);
         
         void SaveToFile(const std::string& filename);
         bool LoadFromFile(const std::string& filename);

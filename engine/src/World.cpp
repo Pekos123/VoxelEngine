@@ -250,12 +250,18 @@ namespace e
     void World::UnloadChunk(const glm::ivec3& chunkPos) { chunks.erase(chunkPos); }
     void World::UnloadAllChunks() { chunks.clear(); }
 
-    void World::Draw(const std::shared_ptr<Shader>& shader, const glm::vec3& cameraPos, float renderDistance)
+    void World::Draw(const std::shared_ptr<Shader>& shader, const glm::vec3& cameraPos, const glm::vec3& cameraDir, float renderDistance)
     {
         float renderDistSq = renderDistance * renderDistance;
         for (auto& pair : chunks) {
             Chunk& chunk = pair.second;
             glm::vec3 chunkCenter = glm::vec3(chunk.position.x + CHUNK_SIZE / 2.0f, CHUNK_SIZE / 2.0f, chunk.position.z + CHUNK_SIZE / 2.0f);
+    
+            glm::vec3 dirToChunk = glm::normalize(chunkCenter - cameraPos);
+            float dot = glm::dot(cameraDir, dirToChunk);
+
+            if(dot < -0.2f) continue;
+
             float distSq = glm::dot(cameraPos - chunkCenter, cameraPos - chunkCenter);
             if (distSq < renderDistSq && chunk.vertexCount > 0) {
                 shader->SetUniformMat4("u_Model", glm::mat4(1.0f)); 
