@@ -55,7 +55,6 @@ namespace e
 
             foccusedAlreadyPressed = true;
             foccused = !foccused;
-            std::cout << foccused << std::endl;
             if(foccused)
                 glfwSetInputMode(window->GetGLFWwindow(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
             else
