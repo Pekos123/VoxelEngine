@@ -24,14 +24,13 @@ namespace e
             glm::vec3 orientation = glm::vec3(0.0f, 0.0f, -1.0f);
             glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
 
-            int width, height;
-
             float speed = 0.1f;
             float sensivity = 1.0f;
 
-            Camera(int width, int height, glm::vec3 pos, e::Window* window);
+            Camera(glm::vec3 pos, e::Window* window);
 
             void Matrix(float FOV, float near, float far, e::Shader& shader, const char* uniform);
+            void UpdateProjection(int currentWidth, int currentHeight);
             void Inputs();
             void MouseMovement();
 

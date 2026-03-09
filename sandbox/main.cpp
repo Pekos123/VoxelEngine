@@ -179,7 +179,7 @@ class Sandbox : public e::Application
     }
     
 public:
-    Sandbox() : camera(m_Window->GetWidth(), m_Window->GetHeight(), { 8.0f, 20.0f, 40.0f }, m_Window.get())
+    Sandbox() : camera({ 8.0f, 20.0f, 40.0f }, m_Window.get())
     {
         DebugWindowInit();   
         LoadShaders();

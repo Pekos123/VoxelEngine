@@ -14,6 +14,8 @@ namespace e
         GLFWwindow* window;
         int width, height;
         const char* title;
+
+        static void framebuffer_size_callback(GLFWwindow* window, int width, int height);
     public:
         Window(unsigned int width, unsigned int height, const char* title);
         ~Window();

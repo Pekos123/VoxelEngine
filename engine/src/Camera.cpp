@@ -2,8 +2,8 @@
 
 namespace e
 {
-    Camera::Camera(int width, int height, glm::vec3 pos, e::Window* window)
-        : width(width), height(height), position(pos), window(window)
+    Camera::Camera(glm::vec3 pos, e::Window* window)
+        : position(pos), window(window)
     {
         glfwSetInputMode(window->GetGLFWwindow(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     }
@@ -12,7 +12,7 @@ namespace e
     {
         glm::mat4 view = glm::lookAt(position, position + orientation, up);
         // Fix: Use float division for aspect ratio
-        glm::mat4 proj = glm::perspective(glm::radians(FOV), (float)width / (float)height, near, far);
+        glm::mat4 proj = glm::perspective(glm::radians(FOV), (float)window->GetWidth() / (float)window->GetHeight(), near, far);
         glm::mat4 mvp = proj * view;
 
         shader.Bind();
@@ -22,11 +22,9 @@ namespace e
     glm::mat4 Camera::GetViewProjectionMatrix(float FOV, float near, float far) const
     {
         glm::mat4 view = glm::lookAt(position, position + orientation, up);
-        glm::mat4 proj = glm::perspective(glm::radians(FOV), (float)width / (float)height, near, far);
+        glm::mat4 proj = glm::perspective(glm::radians(FOV), (float)window->GetWidth() / (float)window->GetHeight(), near, far);
         return proj * view;
     }
-
-    // should be uopdated every frame with current window and shader
 
     void Camera::MouseMovement()
     {
@@ -34,8 +32,8 @@ namespace e
         glfwGetCursorPos(window->GetGLFWwindow(), &mouseX, &mouseY);
 
         // Calculate offset from center
-        float rotX = sensivity * (float)(mouseY - (height / 2)) / height;
-        float rotY = sensivity * (float)(mouseX - (width / 2)) / width;
+        float rotX = sensivity * (float)(mouseY - (window->GetHeight() / 2)) / window->GetHeight();
+        float rotY = sensivity * (float)(mouseX - (window->GetWidth() / 2)) / window->GetWidth();
         // Apply rotation to orientation
         // Note: We use raw values here because sensivity handles the scaling
         glm::vec3 newOrientation = glm::rotate(orientation, glm::radians(-rotX * 100.0f), glm::normalize(glm::cross(orientation, up)));
@@ -46,7 +44,7 @@ namespace e
             
         orientation = glm::rotate(orientation, glm::radians(-rotY * 100.0f), up);
         // Re-center cursor
-        glfwSetCursorPos(window->GetGLFWwindow(), (double)width / 2, (double)height / 2);
+        glfwSetCursorPos(window->GetGLFWwindow(), (double)window->GetWidth() / 2, (double)window->GetHeight() / 2);
     }
 
     void Camera::Inputs()

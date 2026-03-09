@@ -14,7 +14,7 @@ namespace e
         glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
         glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
         glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-
+        
         window = glfwCreateWindow(width, height, title, nullptr, nullptr);
         if (!window)
         {
@@ -22,6 +22,7 @@ namespace e
             throw std::runtime_error("Failed to create GLFW window");
         }
 
+        glfwSetFramebufferSizeCallback(window, Window::framebuffer_size_callback);
         glfwMakeContextCurrent(window);
         glfwSwapInterval(1); // Enable VSync
 
@@ -30,11 +31,15 @@ namespace e
             throw std::runtime_error("Failed to initialize GLAD");
         }
 
-        // viewport setup with depth
-        glViewport(0, 0, width, height);
         glEnable(GL_DEPTH_TEST);
         glEnable(GL_CULL_FACE);
         glCullFace(GL_BACK);
+    }
+
+    void Window::framebuffer_size_callback(GLFWwindow* window, int width, int height)
+    {
+        // Tell OpenGL the new dimensions of the window
+        glViewport(0, 0, width, height);
     }
 
     Window::~Window()
