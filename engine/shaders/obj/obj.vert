@@ -1,0 +1,63 @@
+#version 330 core
+layout (location = 0) in uint a_Data; // All data packed into one 32-bit int
+
+out vec3 Normal;
+out vec3 FragPos;
+out float vAO;
+
+uniform mat4 u_ViewProj;
+uniform vec3 u_ChunkPos; // Pass the chunk's world position (e.g., 16, 0, 32)
+
+void main()
+{
+    // UNPACKING (Matches the C++ packing logic)
+    // Bits 0-4: X (0-31)
+    // Bits 5-9: Y (0-31)
+    // Bits 10-14: Z (0-31)
+    uint x = a_Data & 0x1Fu;
+    uint y = (a_Data >> 5u) & 0x1Fu;
+    uint z = (a_Data >> 10u) & 0x1Fu;
+    
+    // Bits 15-16: AO (0-3)
+    uint ao = (a_Data >> 15u) & 0x3u;
+    vAO = float(ao) / 3.0; // Convert to 0.0 - 1.0 range
+
+    // Bits 17-19: Normal ID (0-5)
+    uint normalID = (a_Data >> 17u) & 0x7u;
+    
+    // Bits 20-21: Vertex Index (0-3)
+    uint vIdx = (a_Data >> 20u) & 0x3u;
+
+    vec3 normals[6] = vec3[](
+        vec3(0, 1, 0),  // TOP
+        vec3(0, -1, 0), // BOTTOM
+        vec3(0, 0, 1),  // FRONT
+        vec3(0, 0, -1), // BACK
+        vec3(-1, 0, 0), // LEFT
+        vec3(1, 0, 0)   // RIGHT
+    );
+    Normal = normals[normalID];
+
+    // Offsets for the 4 corners of a face quad
+    // Order: Bottom-Left, Bottom-Right, Top-Right, Top-Left
+    vec3 vOffsets[24] = vec3[](
+        // TOP (+Y)
+        vec3(0, 1, 0), vec3(0, 1, 1), vec3(1, 1, 1), vec3(1, 1, 0),
+        // BOTTOM (-Y)
+        vec3(0, 0, 0), vec3(1, 0, 0), vec3(1, 0, 1), vec3(0, 0, 1),
+        // FRONT (+Z)
+        vec3(0, 0, 1), vec3(1, 0, 1), vec3(1, 1, 1), vec3(0, 1, 1),
+        // BACK (-Z)
+        vec3(1, 0, 0), vec3(0, 0, 0), vec3(0, 1, 0), vec3(1, 1, 0),
+        // LEFT (-X)
+        vec3(0, 0, 0), vec3(0, 0, 1), vec3(0, 1, 1), vec3(0, 1, 0),
+        // RIGHT (+X)
+        vec3(1, 0, 1), vec3(1, 0, 0), vec3(1, 1, 0), vec3(1, 1, 1)
+    );
+
+    // Calculate Positions
+    vec3 localPos = vec3(float(x), float(y), float(z)) + vOffsets[normalID * 4u + vIdx];
+    FragPos = u_ChunkPos + localPos; 
+    
+    gl_Position = u_ViewProj * vec4(FragPos, 1.0);
+}
