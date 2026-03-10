@@ -40,55 +40,79 @@ namespace e
                     uint8_t blockType = blocks[x][y][z];
                     if (blockType == 0) continue;
 
-                    auto getB = [&](int ox, int oy, int oz) -> bool {
+                    auto getB = [&](int ox, int oy, int oz) -> uint8_t {
                         int nx = x + ox;
                         int ny = y + oy;
                         int nz = z + oz;
-                        if (ny < 0 || ny >= CHUNK_HEIGHT) return false;
-                        if (nx >= 0 && nx < CHUNK_SIZE && nz >= 0 && nz < CHUNK_SIZE) return blocks[nx][ny][nz] != 0;
-                        if (nx >= CHUNK_SIZE) return nxp ? nxp->blocks[0][ny][nz] != 0 : false;
-                        if (nx < 0)           return nxn ? nxn->blocks[CHUNK_SIZE - 1][ny][nz] != 0 : false;
-                        if (nz >= CHUNK_SIZE) return nzp ? nzp->blocks[nx][ny][0] != 0 : false;
-                        if (nz < 0)           return nzn ? nzn->blocks[nx][ny][CHUNK_SIZE - 1] != 0 : false;
+                        if (ny < 0 || ny >= CHUNK_HEIGHT) return e::BlocksID::AIR;
+
+                        if (nx >= 0 && nx < CHUNK_SIZE && nz >= 0 && nz < CHUNK_SIZE) 
+                            return blocks[nx][ny][nz];
+
+                        // Chunk boundary checks
+                        if (nx >= CHUNK_SIZE) return nxp ? nxp->blocks[0][ny][nz] : e::BlocksID::AIR;
+                        if (nx < 0)           return nxn ? nxn->blocks[CHUNK_SIZE - 1][ny][nz] : e::BlocksID::AIR;
+                        if (nz >= CHUNK_SIZE) return nzp ? nzp->blocks[nx][ny][0] : e::BlocksID::AIR;
+                        if (nz < 0)           return nzn ? nzn->blocks[nx][ny][CHUNK_SIZE - 1] : e::BlocksID::AIR;
+
+                        return e::BlocksID::AIR;
+                    };
+
+                    // Rule: Render face if neighbor is AIR or GLASS
+                    // Note: You might want to skip rendering if BOTH are GLASS to prevent internal flickering
+                    auto shouldRender = [&](uint8_t neighborId) -> bool {
+                        if (neighborId == e::BlocksID::AIR) return true;
+                        if (neighborId == e::BlocksID::GLASS) {
+                            // Only render the face against glass if this block ISN'T glass
+                            return blockType != e::BlocksID::GLASS;
+                        }
                         return false;
                     };
+
+                    uint8_t topNeighbor = getB(0, 1, 0);
+                    uint8_t bottomNeighbor = getB(0, -1, 0);
+                    uint8_t zNeighbor = getB(0, 0, 1);
+                    uint8_t nzNeighbor = getB(0, 0, -1);
+                    uint8_t xNeighbor = getB(1, 0, 0);
+                    uint8_t nxNeighbor = getB(-1, 0, 0);
+                    
                     float ao[4];
-                    if (!getB(0, 1, 0)) {
+                    if (shouldRender(topNeighbor)) {
                         ao[0] = vertexAO(getB(-1, 1, 0), getB(0, 1, -1), getB(-1, 1, -1));
                         ao[1] = vertexAO(getB(-1, 1, 0), getB(0, 1, 1), getB(-1, 1, 1));
                         ao[2] = vertexAO(getB(1, 1, 0), getB(0, 1, 1), getB(1, 1, 1));
                         ao[3] = vertexAO(getB(1, 1, 0), getB(0, 1, -1), getB(1, 1, -1));
                         Utils::addPackedFace(vertices, x, y, z, FaceDirection::TOP, ao, blockType);
                     }
-                    if (!getB(0, -1, 0)) {
+                    if (shouldRender(bottomNeighbor)) {
                         ao[0] = vertexAO(getB(-1, -1, 0), getB(0, -1, -1), getB(-1, -1, -1));
                         ao[1] = vertexAO(getB(1, -1, 0), getB(0, -1, -1), getB(1, -1, -1));
                         ao[2] = vertexAO(getB(1, -1, 0), getB(0, -1, 1), getB(1, -1, 1));
                         ao[3] = vertexAO(getB(-1, -1, 0), getB(0, -1, 1), getB(-1, -1, 1));
                         Utils::addPackedFace(vertices, x, y, z, FaceDirection::BOTTOM, ao, blockType);
                     }
-                    if (!getB(0, 0, 1)) {
+                    if (shouldRender(zNeighbor)) {
                         ao[0] = vertexAO(getB(-1, 0, 1), getB(0, -1, 1), getB(-1, -1, 1));
                         ao[1] = vertexAO(getB(1, 0, 1), getB(0, -1, 1), getB(1, -1, 1));
                         ao[2] = vertexAO(getB(1, 0, 1), getB(0, 1, 1), getB(1, 1, 1));
                         ao[3] = vertexAO(getB(-1, 0, 1), getB(0, 1, 1), getB(-1, 1, 1));
                         Utils::addPackedFace(vertices, x, y, z, FaceDirection::FRONT, ao, blockType);
                     }
-                    if (!getB(0, 0, -1)) {
+                    if (shouldRender(nzNeighbor)) {
                         ao[0] = vertexAO(getB(1, 0, -1), getB(0, -1, -1), getB(1, -1, -1));
                         ao[1] = vertexAO(getB(-1, 0, -1), getB(0, -1, -1), getB(-1, -1, -1));
                         ao[2] = vertexAO(getB(-1, 0, -1), getB(0, 1, -1), getB(-1, 1, -1));
                         ao[3] = vertexAO(getB(1, 0, -1), getB(0, 1, -1), getB(1, 1, -1));
                         Utils::addPackedFace(vertices, x, y, z, FaceDirection::BACK, ao, blockType);
                     }
-                    if (!getB(-1, 0, 0)) {
+                    if (shouldRender(nxNeighbor)) {
                         ao[0] = vertexAO(getB(-1, -1, 0), getB(-1, 0, -1), getB(-1, -1, -1));
                         ao[1] = vertexAO(getB(-1, -1, 0), getB(-1, 0, 1), getB(-1, -1, 1));
                         ao[2] = vertexAO(getB(-1, 1, 0), getB(-1, 0, 1), getB(-1, 1, 1));
                         ao[3] = vertexAO(getB(-1, 1, 0), getB(-1, 0, -1), getB(-1, 1, -1));
                         Utils::addPackedFace(vertices, x, y, z, FaceDirection::LEFT, ao, blockType);
                     }
-                    if (!getB(1, 0, 0)) {
+                    if (shouldRender(xNeighbor)) {
                         ao[0] = vertexAO(getB(1, -1, 0), getB(1, 0, 1), getB(1, -1, 1));
                         ao[1] = vertexAO(getB(1, -1, 0), getB(1, 0, -1), getB(1, -1, -1));
                         ao[2] = vertexAO(getB(1, 1, 0), getB(1, 0, -1), getB(1, 1, -1));

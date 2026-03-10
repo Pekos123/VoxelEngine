@@ -39,7 +39,7 @@ namespace e
         glm::vec3 newOrientation = glm::rotate(orientation, glm::radians(-rotX * 100.0f), glm::normalize(glm::cross(orientation, up)));
         
         // Limit pitch to prevent flipping
-        if(abs(glm::angle(newOrientation, up) - glm::radians(90.0f)) <= glm::radians(85.0f))
+        if(abs(glm::angle(newOrientation, up) - glm::radians(90.0f)) <= glm::radians(88.0f))
             orientation = newOrientation;
             
         orientation = glm::rotate(orientation, glm::radians(-rotY * 100.0f), up);
@@ -65,7 +65,7 @@ namespace e
         
         if(!foccused) return; 
 
-        // Movement keys
+        /*/ Movement keys
         if(glfwGetKey(window->GetGLFWwindow(), GLFW_KEY_W) == GLFW_PRESS)
             position += speed * orientation * Renderer::deltaTime;
         if(glfwGetKey(window->GetGLFWwindow(), GLFW_KEY_S) == GLFW_PRESS)
@@ -77,7 +77,7 @@ namespace e
         if (glfwGetKey(window->GetGLFWwindow(), GLFW_KEY_SPACE) == GLFW_PRESS)
 		    position += speed * up * Renderer::deltaTime;
 	    if (glfwGetKey(window->GetGLFWwindow(), GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS)
-		    position += speed * -up * Renderer::deltaTime;
+		    position += speed * -up * Renderer::deltaTime;*/
 
 
         // Speed boost

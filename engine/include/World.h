@@ -32,6 +32,19 @@ namespace e
     class Shader;
     class World;
 
+    enum BlocksID
+    {
+        AIR,
+        GRASS,
+        DIRT,
+        STONE,
+        OAK_PLANKS,
+        OAK_LOG,
+        COBBLESTONE,
+        GLASS,
+        SANDSTONE
+    };
+
     class TerrainGenerator
     {
     public:

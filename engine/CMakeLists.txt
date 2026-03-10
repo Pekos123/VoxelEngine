@@ -9,6 +9,9 @@ add_library(engine STATIC
     src/Utils.cpp
     src/World.cpp
     src/Texture.cpp
+    src/Texture2D.cpp
+    src/Player.cpp
+    src/UIBlockDisplay.cpp
 
     # GLAD
     ../external/glad/src/glad.c

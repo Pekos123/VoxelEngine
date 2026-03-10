@@ -6,6 +6,8 @@
 #include <World.h>
 #include <Utils.h>
 #include <Texture.h>
+#include <Player.h>
+#include <UIBlockDisplay.h>
 
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
@@ -20,15 +22,18 @@
 
 class Sandbox : public e::Application
 {
+    e::Player player;
     e::Camera camera;
     e::World* world = new e::World(55555); // seed
-
+    e::UIBlockDisplay uiBlockDisplay;
+    
     std::shared_ptr<e::Shader> objShader;
     std::shared_ptr<e::Shader> outlineShader;
 
     glm::vec3 lightPos = { 10.0f, 20.0f, 10.0f };
     glm::vec3 objectColor = { 1.f, 1.f, 1.0f }; // White bc of textures
     glm::vec3 skyColor = {0.7f, 0.7f, 0.95f};
+
     // Outline
     glm::vec3 outlineColor = { 0.0f, 0.0f, 0.0f }; // Black
     float outlineThickness = 2.0f;
@@ -37,7 +42,7 @@ class Sandbox : public e::Application
     std::shared_ptr<e::IndexBuffer> ib;
 
     std::unique_ptr<e::TextureArray> texArray;
-    int currentPlacingBlockId = 1;
+    int currentPlacingBlockId = e::BlocksID::GRASS;
 
     float renderDistance = 120.0f;
 
@@ -84,7 +89,7 @@ class Sandbox : public e::Application
                 ImGui::DragFloat3("Light Position", glm::value_ptr(lightPos), 0.5f);
                 ImGui::ColorEdit3("Outline Color", glm::value_ptr(outlineColor));
                 ImGui::DragFloat("Outline Thickness", &outlineThickness, 0.1f, 0.1f, 5.0f);
-                ImGui::DragInt("Block Id", &currentPlacingBlockId, 1, 1, 8);   
+                ImGui::DragInt("Block Id", &currentPlacingBlockId, 1, e::BlocksID::GRASS, e::BlocksID::SANDSTONE);   
             ImGui::End();
 
             // FPS Counter
@@ -199,11 +204,29 @@ class Sandbox : public e::Application
             glLineWidth(1.0f); // Back to normal
         }
     }
-
+    void DrawUI()
+    {
+        if (!texArray) return;
+    
+        int width = m_Window->GetWidth();
+        int height = m_Window->GetHeight();
+    
+        // Pass the actual OpenGL texture handle from your texArray
+        // and move the Y position to 100 pixels from the bottom
+        uiBlockDisplay.DrawBlockIcon(
+           texArray->GetID(),      // The OpenGL handle (uint32_t)
+           currentPlacingBlockId,  // The block index (int)
+           {width / 2 - 50, height - 120}, // Position (Bottom center-ish)
+           100.0f,                 // Size (100x100 pixels)
+           width, height
+        );
+    }
+    
     bool leftMouseDown = false;
     bool rightMouseDown = false;
     void Input()
     {
+        player.HandleInput(m_Window->GetGLFWwindow(), camera.orientation);
         if (ImGui::GetIO().WantCaptureMouse) return;
 
         // Left Click: Remove Block
@@ -212,7 +235,7 @@ class Sandbox : public e::Application
             if (!leftMouseDown) {
                 e::RaycastResult result = world->Raycast(camera.position, camera.orientation, 10.0f);
                 if (result.hit) {
-                    world->SetBlock(result.blockPos.x, result.blockPos.y, result.blockPos.z, 0);
+                    world->SetBlock(result.blockPos.x, result.blockPos.y, result.blockPos.z, e::BlocksID::AIR);
                 }
                 leftMouseDown = true;
             }
@@ -228,7 +251,10 @@ class Sandbox : public e::Application
                 if (result.hit) {
                     // Place block at the position relative to the hit face normal
                     glm::ivec3 placePos = result.blockPos + result.normal;
-                    world->SetBlock(placePos.x, placePos.y, placePos.z, currentPlacingBlockId); // 1 is our basic block type
+                    
+                    if (player.CanPlaceBlock(placePos)) {
+                        world->SetBlock(placePos.x, placePos.y, placePos.z, currentPlacingBlockId);
+                    }
                 }
                 rightMouseDown = true;
             }
@@ -246,7 +272,7 @@ class Sandbox : public e::Application
             (e::Utils::GetRootDir() / "textures/blocks/grass_top.png").string(),
             (e::Utils::GetRootDir() / "textures/blocks/dirt.png").string(),
             (e::Utils::GetRootDir() / "textures/blocks/stone_generic.png").string(),
-            (e::Utils::GetRootDir() / "textures/blocks/dirt.png").string(),
+            (e::Utils::GetRootDir() / "textures/blocks/oak_planks.png").string(),
             (e::Utils::GetRootDir() / "textures/blocks/oak_log_side.png").string(),
             (e::Utils::GetRootDir() / "textures/blocks/cobblestone.png").string(),
             (e::Utils::GetRootDir() / "textures/blocks/glass.png").string(),
@@ -262,14 +288,41 @@ class Sandbox : public e::Application
             texArray->AddTexture(textureFiles[i], i);
         }
     }
+
+    static void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
+    {
+        // 1. Get the pointer back from GLFW
+        Sandbox* instance = static_cast<Sandbox*>(glfwGetWindowUserPointer(window));
+
+        // 2. Safety check and logic
+        if (instance) 
+        {
+            // Now you can access non-static variables!
+            instance->currentPlacingBlockId += (int)yoffset;
+
+            // Wrap around logic
+            if (instance->currentPlacingBlockId > 8) instance->currentPlacingBlockId = 1;
+            if (instance->currentPlacingBlockId < 1) instance->currentPlacingBlockId = 8;
+        }
+    }   
     
 public:
-    Sandbox() : camera({ 8.0f, 50.0f, 40.0f }, m_Window.get())
+    Sandbox() : player({ 8.0f, 50.0f, 40.0f }), camera({ 8.0f, 50.0f, 40.0f }, m_Window.get()), uiBlockDisplay()
     {
+        std::string vPath = (e::Utils::GetRootDir() / "engine/shaders/ui/ui.vert").string();
+        std::string fPath = (e::Utils::GetRootDir() / "engine/shaders/ui/ui.frag").string();
+        std::string vSrc = e::Utils::ReadFile(vPath);
+        std::string fSrc = e::Utils::ReadFile(fPath);
+
+        uiBlockDisplay.CompileShaders(vSrc, fSrc);
+        
         DebugWindowInit();   
         LoadShaders();
         LoadTextures();
         SetupOutlineBuffer();
+
+        glfwSetWindowUserPointer(m_Window->GetGLFWwindow(), this);
+        glfwSetScrollCallback(m_Window->GetGLFWwindow(), scroll_callback);
 
         if (!world->LoadFromFile("world.dat")) {
             world->GenerateWorld(5); // Start small, let Update load more
@@ -288,6 +341,11 @@ public:
         glEnable(GL_DEPTH_TEST);
         e::Renderer::SetClearColor({ skyColor, 1.0f });
         e::Renderer::Clear();
+
+        // Update player physics
+        player.Update(e::Renderer::deltaTime, *world);
+        // Sync camera to player eye level
+        camera.position = player.position + glm::vec3(0.0f, 1.7f, 0.0f);
 
         // Dynamically load/generate chunks around camera
         world->Update(camera.position, renderDistance);
@@ -310,6 +368,7 @@ public:
 
             world->Draw(objShader, camera.position, camera.orientation, renderDistance);
             DrawOutline();
+            DrawUI();
         }
         
         camera.Inputs();
