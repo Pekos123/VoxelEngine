@@ -63,6 +63,12 @@ namespace e
         glUniform4f(location, value.x, value.y, value.z, value.a);
     }
 
+    void Shader::SetUniformInt(const std::string& name, int value)
+    {
+        int location = glGetUniformLocation(m_RendererID, name.c_str());
+        glUniform1i(location, value);
+    }
+
     void Shader::SetUniformMat4(const std::string& name, const glm::mat4& value)
     {
         int location = glGetUniformLocation(m_RendererID, name.c_str());

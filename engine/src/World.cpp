@@ -14,7 +14,11 @@ namespace e
                 int worldZ = position.z + z;
                 int surfaceHeight = gen.getHeight(worldX, worldZ);
                 for (int y = 0; y < CHUNK_HEIGHT; y++) {
-                    blocks[x][y][z] = (y < surfaceHeight) ? 1 : 0;
+                    uint8_t type = 0;
+                    if (y < surfaceHeight - 4) type = 3; // Stone
+                    else if (y < surfaceHeight - 1) type = 2; // Dirt
+                    else if (y < surfaceHeight) type = 1; // Grass
+                    blocks[x][y][z] = type;
                 }
             }
         }
@@ -54,42 +58,42 @@ namespace e
                         ao[1] = vertexAO(getB(-1, 1, 0), getB(0, 1, 1), getB(-1, 1, 1));
                         ao[2] = vertexAO(getB(1, 1, 0), getB(0, 1, 1), getB(1, 1, 1));
                         ao[3] = vertexAO(getB(1, 1, 0), getB(0, 1, -1), getB(1, 1, -1));
-                        Utils::addPackedFace(vertices, x, y, z, FaceDirection::TOP, ao);
+                        Utils::addPackedFace(vertices, x, y, z, FaceDirection::TOP, ao, blockType);
                     }
                     if (!getB(0, -1, 0)) {
                         ao[0] = vertexAO(getB(-1, -1, 0), getB(0, -1, -1), getB(-1, -1, -1));
                         ao[1] = vertexAO(getB(1, -1, 0), getB(0, -1, -1), getB(1, -1, -1));
                         ao[2] = vertexAO(getB(1, -1, 0), getB(0, -1, 1), getB(1, -1, 1));
                         ao[3] = vertexAO(getB(-1, -1, 0), getB(0, -1, 1), getB(-1, -1, 1));
-                        Utils::addPackedFace(vertices, x, y, z, FaceDirection::BOTTOM, ao);
+                        Utils::addPackedFace(vertices, x, y, z, FaceDirection::BOTTOM, ao, blockType);
                     }
                     if (!getB(0, 0, 1)) {
                         ao[0] = vertexAO(getB(-1, 0, 1), getB(0, -1, 1), getB(-1, -1, 1));
                         ao[1] = vertexAO(getB(1, 0, 1), getB(0, -1, 1), getB(1, -1, 1));
                         ao[2] = vertexAO(getB(1, 0, 1), getB(0, 1, 1), getB(1, 1, 1));
                         ao[3] = vertexAO(getB(-1, 0, 1), getB(0, 1, 1), getB(-1, 1, 1));
-                        Utils::addPackedFace(vertices, x, y, z, FaceDirection::FRONT, ao);
+                        Utils::addPackedFace(vertices, x, y, z, FaceDirection::FRONT, ao, blockType);
                     }
                     if (!getB(0, 0, -1)) {
                         ao[0] = vertexAO(getB(1, 0, -1), getB(0, -1, -1), getB(1, -1, -1));
                         ao[1] = vertexAO(getB(-1, 0, -1), getB(0, -1, -1), getB(-1, -1, -1));
                         ao[2] = vertexAO(getB(-1, 0, -1), getB(0, 1, -1), getB(-1, 1, -1));
                         ao[3] = vertexAO(getB(1, 0, -1), getB(0, 1, -1), getB(1, 1, -1));
-                        Utils::addPackedFace(vertices, x, y, z, FaceDirection::BACK, ao);
+                        Utils::addPackedFace(vertices, x, y, z, FaceDirection::BACK, ao, blockType);
                     }
                     if (!getB(-1, 0, 0)) {
                         ao[0] = vertexAO(getB(-1, -1, 0), getB(-1, 0, -1), getB(-1, -1, -1));
                         ao[1] = vertexAO(getB(-1, -1, 0), getB(-1, 0, 1), getB(-1, -1, 1));
                         ao[2] = vertexAO(getB(-1, 1, 0), getB(-1, 0, 1), getB(-1, 1, 1));
                         ao[3] = vertexAO(getB(-1, 1, 0), getB(-1, 0, -1), getB(-1, 1, -1));
-                        Utils::addPackedFace(vertices, x, y, z, FaceDirection::LEFT, ao);
+                        Utils::addPackedFace(vertices, x, y, z, FaceDirection::LEFT, ao, blockType);
                     }
                     if (!getB(1, 0, 0)) {
                         ao[0] = vertexAO(getB(1, -1, 0), getB(1, 0, 1), getB(1, -1, 1));
                         ao[1] = vertexAO(getB(1, -1, 0), getB(1, 0, -1), getB(1, -1, -1));
                         ao[2] = vertexAO(getB(1, 1, 0), getB(1, 0, -1), getB(1, 1, -1));
                         ao[3] = vertexAO(getB(1, 1, 0), getB(1, 0, 1), getB(1, 1, 1));
-                        Utils::addPackedFace(vertices, x, y, z, FaceDirection::RIGHT, ao);
+                        Utils::addPackedFace(vertices, x, y, z, FaceDirection::RIGHT, ao, blockType);
                     }
                 }
             }

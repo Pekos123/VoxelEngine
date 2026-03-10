@@ -1,9 +1,14 @@
 #version 330 core
+
 out vec4 FragColor;
 
 in vec3 Normal;  
 in vec3 FragPos; 
 in float vAO;
+in vec2 vTexCoord;
+flat in uint vTextureID;
+
+uniform sampler2DArray u_Textures;
 
 uniform vec3 lightPos;  
 uniform vec3 viewPos;  
@@ -40,10 +45,15 @@ void main() {
     float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);
     vec3 specular = 0.5 * spec * lightColor * attenuation; 
 
-    // --- 5. COMBINE ---
+    // --- 5. TEXTURE ---
+    vec4 texColor = texture(u_Textures, vec3(vTexCoord, float(vTextureID)));
+    if(texColor.a < 0.1)
+        discard;
+
+    // --- 6. COMBINE ---
     // Add sun and point light together, then multiply by color and AO
     vec3 lighting = (ambient + sunDiffuse + pointDiffuse + specular);
-    vec3 result = lighting * objectColor;
+    vec3 result = lighting * texColor.rgb * objectColor;
     
     // Apply Ambient Occlusion at the very end
     // Use mix to ensure AO doesn't turn the block 100% black in corners

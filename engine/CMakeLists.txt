@@ -8,6 +8,7 @@ add_library(engine STATIC
     src/Camera.cpp
     src/Utils.cpp
     src/World.cpp
+    src/Texture.cpp
 
     # GLAD
     ../external/glad/src/glad.c
@@ -34,6 +35,7 @@ target_include_directories(engine PUBLIC
     ../external # Points to directory containing 'glm', 'imgui'
     ../external/imgui
     ../external/imgui/backends
+    ../external/stb
 )
 
 # Link libraries

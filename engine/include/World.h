@@ -54,8 +54,8 @@ namespace e
             double detail = (noiseGen.noise2(x * detailFreq, z * detailFreq) + 1.0) * 0.5;
 
             // 3. Combine
-            float baseHeight = 15.0f;       // Minimum land height
-            float mountainScale = 60.0f;  // How big mountains can get
+            float baseHeight = 32.0f;       // Minimum land height
+            float mountainScale = 90.0f;  // How big mountains can get
             
             return static_cast<int>(baseHeight + (detail * mountainScale * mask));
         }

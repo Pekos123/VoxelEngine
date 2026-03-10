@@ -4,6 +4,8 @@ layout (location = 0) in uint a_Data; // All data packed into one 32-bit int
 out vec3 Normal;
 out vec3 FragPos;
 out float vAO;
+out vec2 vTexCoord;
+flat out uint vTextureID;
 
 uniform mat4 u_ViewProj;
 uniform vec3 u_ChunkPos; // Pass the chunk's world position (e.g., 16, 0, 32)
@@ -27,6 +29,12 @@ void main()
     
     // Bits 23-24: Vertex Index (0-3)
     uint vIdx = (a_Data >> 23u) & 0x3u;
+    
+    // Bits 25-31: Block Id (0-127)
+    uint blockID = (a_Data >> 25u) & 0x7Fu;
+
+    vAO = float(ao) / 3.0;
+    vTextureID = blockID - 1u; // Adjust if blockID 1 is the first texture (index 0)
 
     vec3 normals[6] = vec3[](
         vec3(0, 1, 0),  // TOP
@@ -37,6 +45,14 @@ void main()
         vec3(1, 0, 0)   // RIGHT
     );
     Normal = normals[normalID];
+
+    vec2 uvs[4] = vec2[](
+        vec2(0.0, 0.0),
+        vec2(1.0, 0.0),
+        vec2(1.0, 1.0),
+        vec2(0.0, 1.0)
+    );
+    vTexCoord = uvs[vIdx];
 
     // Offsets for the 4 corners of a face quad
     // Order: Bottom-Left, Bottom-Right, Top-Right, Top-Left

@@ -5,6 +5,7 @@
 #include <Camera.h>
 #include <World.h>
 #include <Utils.h>
+#include <Texture.h>
 
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
@@ -26,7 +27,7 @@ class Sandbox : public e::Application
     std::shared_ptr<e::Shader> outlineShader;
 
     glm::vec3 lightPos = { 10.0f, 20.0f, 10.0f };
-    glm::vec3 objectColor = { 0.4f, 0.8f, 0.3f }; // Nice green
+    glm::vec3 objectColor = { 1.f, 1.f, 1.0f }; // White bc of textures
     glm::vec3 skyColor = {0.7f, 0.7f, 0.95f};
     // Outline
     glm::vec3 outlineColor = { 0.0f, 0.0f, 0.0f }; // Black
@@ -34,6 +35,9 @@ class Sandbox : public e::Application
     std::unique_ptr<e::VertexArray> outlineVAO;
     std::shared_ptr<e::VertexBuffer> vbo;
     std::shared_ptr<e::IndexBuffer> ib;
+
+    std::unique_ptr<e::TextureArray> texArray;
+    int currentPlacingBlockId = 1;
 
     float renderDistance = 120.0f;
 
@@ -80,6 +84,7 @@ class Sandbox : public e::Application
                 ImGui::DragFloat3("Light Position", glm::value_ptr(lightPos), 0.5f);
                 ImGui::ColorEdit3("Outline Color", glm::value_ptr(outlineColor));
                 ImGui::DragFloat("Outline Thickness", &outlineThickness, 0.1f, 0.1f, 5.0f);
+                ImGui::DragInt("Block Id", &currentPlacingBlockId, 1, 1, 8);   
             ImGui::End();
 
             // FPS Counter
@@ -145,34 +150,13 @@ class Sandbox : public e::Application
     }
     void LoadShaders()
     {
-        std::filesystem::path currentDir = std::filesystem::current_path();
-        std::filesystem::path rootDir;
-        
-        std::filesystem::path checkDir = currentDir;
-        for (int i = 0; i < 5; ++i) {
-            if (std::filesystem::exists(checkDir / "build")) {
-                rootDir = checkDir;
-                break;
-            }
-            if (checkDir.has_parent_path()) {
-                checkDir = checkDir.parent_path();
-            } else {
-                break;
-            }
-        }
-
-        if (rootDir.empty()) {
-            std::cerr << "CRITICAL: Could not find project root containing 'build' folder!" << std::endl;
-            return;
-        }
-
-        std::string vPath = (rootDir / "engine/shaders/obj/obj.vert").string();
-        std::string fPath = (rootDir / "engine/shaders/obj/obj.frag").string();
+        std::string vPath = (e::Utils::GetRootDir() / "engine/shaders/obj/obj.vert").string();
+        std::string fPath = (e::Utils::GetRootDir() / "engine/shaders/obj/obj.frag").string();
         std::string vSrc = e::Utils::ReadFile(vPath);
         std::string fSrc = e::Utils::ReadFile(fPath);
 
-        std::string outlineVPath = (rootDir / "engine/shaders/outline/outline.vert").string();
-        std::string outlineFPath = (rootDir / "engine/shaders/outline/outline.frag").string();
+        std::string outlineVPath = (e::Utils::GetRootDir() / "engine/shaders/outline/outline.vert").string();
+        std::string outlineFPath = (e::Utils::GetRootDir() / "engine/shaders/outline/outline.frag").string();
         
         std::string outlineFSrc = e::Utils::ReadFile(outlineFPath);
         std::string outlineVSrc = e::Utils::ReadFile(outlineVPath); // Using same source for vert and frag
@@ -244,7 +228,7 @@ class Sandbox : public e::Application
                 if (result.hit) {
                     // Place block at the position relative to the hit face normal
                     glm::ivec3 placePos = result.blockPos + result.normal;
-                    world->SetBlock(placePos.x, placePos.y, placePos.z, 1); // 1 is our basic block type
+                    world->SetBlock(placePos.x, placePos.y, placePos.z, currentPlacingBlockId); // 1 is our basic block type
                 }
                 rightMouseDown = true;
             }
@@ -253,11 +237,38 @@ class Sandbox : public e::Application
         }
     }
     
+    void LoadTextures()
+    {
+
+
+        // 1. Identify common textures we want to use
+        std::vector<std::string> textureFiles = {
+            (e::Utils::GetRootDir() / "textures/blocks/grass_top.png").string(),
+            (e::Utils::GetRootDir() / "textures/blocks/dirt.png").string(),
+            (e::Utils::GetRootDir() / "textures/blocks/stone_generic.png").string(),
+            (e::Utils::GetRootDir() / "textures/blocks/dirt.png").string(),
+            (e::Utils::GetRootDir() / "textures/blocks/oak_log_side.png").string(),
+            (e::Utils::GetRootDir() / "textures/blocks/cobblestone.png").string(),
+            (e::Utils::GetRootDir() / "textures/blocks/glass.png").string(),
+            (e::Utils::GetRootDir() / "textures/blocks/sandstone.png").string()
+        };
+
+        // 2. Initialize TextureArray with the number of textures we have
+        // Assuming 16x16 pixels based on voxel standards and file sizes
+        texArray = std::make_unique<e::TextureArray>(16, 16, (uint32_t)textureFiles.size());
+
+        // 3. Load each texture into its respective layer
+        for (uint32_t i = 0; i < textureFiles.size(); ++i) {
+            texArray->AddTexture(textureFiles[i], i);
+        }
+    }
+    
 public:
-    Sandbox() : camera({ 8.0f, 20.0f, 40.0f }, m_Window.get())
+    Sandbox() : camera({ 8.0f, 50.0f, 40.0f }, m_Window.get())
     {
         DebugWindowInit();   
         LoadShaders();
+        LoadTextures();
         SetupOutlineBuffer();
 
         if (!world->LoadFromFile("world.dat")) {
@@ -291,6 +302,11 @@ public:
             objShader->SetUniformFloat3("viewPos", camera.position);
             objShader->SetUniformFloat3("lightColor", { 1.0f, 1.0f, 1.0f });
             objShader->SetUniformFloat3("objectColor", objectColor);
+
+            if (texArray) {
+                texArray->Bind(0);
+                objShader->SetUniformInt("u_Textures", 0);
+            }
 
             world->Draw(objShader, camera.position, camera.orientation, renderDistance);
             DrawOutline();
