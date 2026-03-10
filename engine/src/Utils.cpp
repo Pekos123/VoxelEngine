@@ -18,12 +18,12 @@ namespace e
 
         uint32_t packVertex(uint32_t x, uint32_t y, uint32_t z, uint32_t ao, uint32_t face, uint32_t vIdx)
         {
-            return (x & 0x1F) |          // bits 0-4
-                   ((y & 0x1F) << 5) |   // bits 5-9
-                   ((z & 0x1F) << 10) |  // bits 10-14
-                   ((ao & 0x3) << 15) |  // bits 15-16
-                   ((face & 0x7) << 17) |// bits 17-19
-                   ((vIdx & 0x3) << 20); // bits 20-21
+            return (x & 0x1F) |          // bits 0-4 (X: 0-31)
+                   ((y & 0xFF) << 5) |   // bits 5-12 (Y: 0-255)
+                   ((z & 0x1F) << 13) |  // bits 13-17 (Z: 0-31)
+                   ((ao & 0x3) << 18) |  // bits 18-19 (AO: 0-3)
+                   ((face & 0x7) << 20) |// bits 20-22 (Face: 0-7)
+                   ((vIdx & 0x3) << 23); // bits 23-24 (vIdx: 0-3)
         }
 
         void addPackedFace(std::vector<uint32_t>& vertices, int x, int y, int z, FaceDirection dir, const float* ao)

@@ -23,7 +23,9 @@
 
 #include <OpenSimplex/OpenSimplex2S.hpp>
 
+// dodaj hight bedacy 128/256 czy cus
 #define CHUNK_SIZE 16
+#define CHUNK_HEIGHT 128
 
 namespace e
 {
@@ -52,7 +54,7 @@ namespace e
             double detail = (noiseGen.noise2(x * detailFreq, z * detailFreq) + 1.0) * 0.5;
 
             // 3. Combine
-            float baseHeight = 5.0f;       // Minimum land height
+            float baseHeight = 15.0f;       // Minimum land height
             float mountainScale = 60.0f;  // How big mountains can get
             
             return static_cast<int>(baseHeight + (detail * mountainScale * mask));
@@ -62,7 +64,7 @@ namespace e
     // each chunk will have their vbo and vao just for now
     struct Chunk
     {
-        uint8_t blocks[CHUNK_SIZE][CHUNK_SIZE][CHUNK_SIZE]; // width, height, depth
+        uint8_t blocks[CHUNK_SIZE][CHUNK_HEIGHT][CHUNK_SIZE]; // width, height, depth
         glm::ivec3 position; // chunk position in world coordinates
 
         std::shared_ptr<VertexArray> vao;

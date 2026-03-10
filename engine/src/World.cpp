@@ -13,7 +13,7 @@ namespace e
                 int worldX = position.x + x;
                 int worldZ = position.z + z;
                 int surfaceHeight = gen.getHeight(worldX, worldZ);
-                for (int y = 0; y < CHUNK_SIZE; y++) {
+                for (int y = 0; y < CHUNK_HEIGHT; y++) {
                     blocks[x][y][z] = (y < surfaceHeight) ? 1 : 0;
                 }
             }
@@ -21,8 +21,9 @@ namespace e
     }
 
     void Chunk::GenerateMesh(World* world) {
+        // pack this
         std::vector<uint32_t> vertices;
-        vertices.reserve(CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE * 6);
+        vertices.reserve(CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE * 6);
 
         Chunk* nxp = world->GetChunk({position.x + CHUNK_SIZE, 0, position.z});
         Chunk* nxn = world->GetChunk({position.x - CHUNK_SIZE, 0, position.z});
@@ -30,7 +31,7 @@ namespace e
         Chunk* nzn = world->GetChunk({position.x, 0, position.z - CHUNK_SIZE});
 
         for (int x = 0; x < CHUNK_SIZE; x++) {
-            for (int y = 0; y < CHUNK_SIZE; y++) {
+            for (int y = 0; y < CHUNK_HEIGHT; y++) {
                 for (int z = 0; z < CHUNK_SIZE; z++) {
                     uint8_t blockType = blocks[x][y][z];
                     if (blockType == 0) continue;
@@ -39,7 +40,7 @@ namespace e
                         int nx = x + ox;
                         int ny = y + oy;
                         int nz = z + oz;
-                        if (ny < 0 || ny >= CHUNK_SIZE) return false;
+                        if (ny < 0 || ny >= CHUNK_HEIGHT) return false;
                         if (nx >= 0 && nx < CHUNK_SIZE && nz >= 0 && nz < CHUNK_SIZE) return blocks[nx][ny][nz] != 0;
                         if (nx >= CHUNK_SIZE) return nxp ? nxp->blocks[0][ny][nz] != 0 : false;
                         if (nx < 0)           return nxn ? nxn->blocks[CHUNK_SIZE - 1][ny][nz] != 0 : false;
@@ -102,7 +103,7 @@ namespace e
 
     uint8_t World::GetBlock(int x, int y, int z)
     {
-        if (y < 0 || y >= CHUNK_SIZE) return 0;
+        if (y < 0 || y >= CHUNK_HEIGHT) return 0;
         int cx = (int)floor((float)x / CHUNK_SIZE) * CHUNK_SIZE;
         int cz = (int)floor((float)z / CHUNK_SIZE) * CHUNK_SIZE;
         auto it = chunks.find({cx, 0, cz});
@@ -111,7 +112,7 @@ namespace e
 
     void World::SetBlock(int x, int y, int z, uint8_t type)
     {
-        if (y < 0 || y >= CHUNK_SIZE) return;
+        if (y < 0 || y >= CHUNK_HEIGHT) return;
         int cx = (int)floor((float)x / CHUNK_SIZE) * CHUNK_SIZE;
         int cz = (int)floor((float)z / CHUNK_SIZE) * CHUNK_SIZE;
         auto it = chunks.find({cx, 0, cz});
@@ -206,7 +207,7 @@ namespace e
         out.write((char*)&chunkCount, sizeof(uint32_t));
         for (auto& [pos, chunk] : chunks) {
             out.write((char*)&pos, sizeof(glm::ivec3));
-            out.write((char*)chunk.blocks, CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE);
+            out.write((char*)chunk.blocks, CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE);
         }
     }
 
@@ -223,12 +224,12 @@ namespace e
                 Chunk newChunk;
                 newChunk.position = pos;
                 newChunk.vao = std::make_shared<VertexArray>();
-                newChunk.vbo = std::make_shared<VertexBuffer>(nullptr, CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE * 6 * sizeof(uint32_t));
+                newChunk.vbo = std::make_shared<VertexBuffer>(nullptr, CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE * 6 * sizeof(uint32_t));
                 newChunk.vbo->SetLayout({{ShaderDataType::UInt, "a_Data"}});
                 newChunk.vao->AddVertexBuffer(newChunk.vbo);
                 chunks[pos] = newChunk;
             }
-            in.read((char*)chunks[pos].blocks, CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE);
+            in.read((char*)chunks[pos].blocks, CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE);
         }
         for (auto& pair : chunks) pair.second.GenerateMesh(this);
         return true;
@@ -240,7 +241,7 @@ namespace e
         Chunk newChunk;
         newChunk.position = chunkPos;
         newChunk.vao = std::make_shared<VertexArray>();
-        newChunk.vbo = std::make_shared<VertexBuffer>(nullptr, CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE * 6 * sizeof(uint32_t));
+        newChunk.vbo = std::make_shared<VertexBuffer>(nullptr, CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE * 6 * sizeof(uint32_t));
         newChunk.vbo->SetLayout({{ShaderDataType::UInt, "a_Data"}});
         newChunk.vao->AddVertexBuffer(newChunk.vbo);
         newChunk.GenerateData(gen);
@@ -261,11 +262,11 @@ namespace e
             Chunk& chunk = pair.second;
 
             glm::vec3 chunkPos = glm::vec3(chunk.position);
-            glm::vec3 chunkCenter = glm::vec3(chunk.position.x + CHUNK_SIZE / 2.0f, CHUNK_SIZE / 2.0f, chunk.position.z + CHUNK_SIZE / 2.0f);
+            glm::vec3 chunkCenter = glm::vec3(chunk.position.x + CHUNK_SIZE / 2.0f, CHUNK_HEIGHT / 2.0f, chunk.position.z + CHUNK_SIZE / 2.0f);
 
             // point to plane
             glm::vec3 v = chunkCenter - cameraPos;
-            if (glm::dot(v, look) < -CHUNK_SIZE) continue; // Subtract CHUNK_SIZE as a safety margin
+            if (glm::dot(v, look) < -CHUNK_HEIGHT) continue; // Subtract CHUNK_SIZE as a safety margin
 
             float distSq = glm::dot(cameraPos - chunkCenter, cameraPos - chunkCenter);
 

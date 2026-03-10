@@ -12,21 +12,21 @@ void main()
 {
     // UNPACKING (Matches the C++ packing logic)
     // Bits 0-4: X (0-31)
-    // Bits 5-9: Y (0-31)
-    // Bits 10-14: Z (0-31)
+    // Bits 5-12: Y (0-255)
+    // Bits 13-17: Z (0-31)
     uint x = a_Data & 0x1Fu;
-    uint y = (a_Data >> 5u) & 0x1Fu;
-    uint z = (a_Data >> 10u) & 0x1Fu;
+    uint y = (a_Data >> 5u) & 0xFFu;
+    uint z = (a_Data >> 13u) & 0x1Fu;
     
-    // Bits 15-16: AO (0-3)
-    uint ao = (a_Data >> 15u) & 0x3u;
+    // Bits 18-19: AO (0-3)
+    uint ao = (a_Data >> 18u) & 0x3u;
     vAO = float(ao) / 3.0; // Convert to 0.0 - 1.0 range
 
-    // Bits 17-19: Normal ID (0-5)
-    uint normalID = (a_Data >> 17u) & 0x7u;
+    // Bits 20-22: Normal ID (0-5)
+    uint normalID = (a_Data >> 20u) & 0x7u;
     
-    // Bits 20-21: Vertex Index (0-3)
-    uint vIdx = (a_Data >> 20u) & 0x3u;
+    // Bits 23-24: Vertex Index (0-3)
+    uint vIdx = (a_Data >> 23u) & 0x3u;
 
     vec3 normals[6] = vec3[](
         vec3(0, 1, 0),  // TOP
