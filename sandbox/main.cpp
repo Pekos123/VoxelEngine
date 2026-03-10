@@ -45,6 +45,7 @@ class Sandbox : public e::Application
     int currentPlacingBlockId = e::BlocksID::GRASS;
 
     float renderDistance = 120.0f;
+    float fov = 75.0f;
 
     void RenderCrosshair()
     {
@@ -89,6 +90,7 @@ class Sandbox : public e::Application
                 ImGui::DragFloat3("Light Position", glm::value_ptr(lightPos), 0.5f);
                 ImGui::ColorEdit3("Outline Color", glm::value_ptr(outlineColor));
                 ImGui::DragFloat("Outline Thickness", &outlineThickness, 0.1f, 0.1f, 5.0f);
+                ImGui::DragFloat("Fov", &fov, 0.1f, 20.f, 120.f);
                 ImGui::DragInt("Block Id", &currentPlacingBlockId, 1, e::BlocksID::GRASS, e::BlocksID::SANDSTONE);   
             ImGui::End();
 
@@ -176,7 +178,7 @@ class Sandbox : public e::Application
     }
 
     // draw outline around targeted block
-    void DrawOutline()
+    void DrawOutline(glm::mat4 viewProj)
     {
         e::RaycastResult result = world->Raycast(camera.position, camera.orientation, 10.0f);
         if(result.hit)
@@ -190,7 +192,7 @@ class Sandbox : public e::Application
             glPolygonOffset(-1.0f, -1.0f);
             
             outlineShader->Bind();
-            outlineShader->SetUniformMat4("u_ViewProj", camera.GetViewProjectionMatrix(45.0f, 0.1f, 1000.0f));
+            outlineShader->SetUniformMat4("u_ViewProj", viewProj);
             outlineShader->SetUniformFloat3("blockPos", glm::vec3(result.blockPos));
             outlineShader->SetUniformFloat4("outlineColor", {outlineColor, 1.0f});
 
@@ -353,7 +355,7 @@ public:
         if (objShader) {
             objShader->Bind();
             
-            glm::mat4 viewProj = camera.GetViewProjectionMatrix(45.0f, 0.1f, 1000.0f);
+            glm::mat4 viewProj = camera.GetViewProjectionMatrix(fov, 0.1f, 1000.0f);
             objShader->SetUniformMat4("u_ViewProj", viewProj);
 
             objShader->SetUniformFloat3("lightPos", lightPos);
@@ -367,7 +369,7 @@ public:
             }
 
             world->Draw(objShader, camera.position, camera.orientation, renderDistance);
-            DrawOutline();
+            DrawOutline(viewProj);
             DrawUI();
         }
         
