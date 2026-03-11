@@ -286,7 +286,9 @@ class Sandbox : public e::Application
             (e::Utils::GetRootDir() / "textures/blocks/oak_log_side.png").string(),
             (e::Utils::GetRootDir() / "textures/blocks/cobblestone.png").string(),
             (e::Utils::GetRootDir() / "textures/blocks/glass.png").string(),
-            (e::Utils::GetRootDir() / "textures/blocks/sandstone.png").string()
+            // if u want to add new block place it here, also dont forget to update
+            // blocks in World.h -> BlocksID
+            (e::Utils::GetRootDir() / "textures/blocks/sandstone.png").string() // lets sandstone be last block (HARDCODED)
         };
 
         // 2. Initialize TextureArray with the number of textures we have
