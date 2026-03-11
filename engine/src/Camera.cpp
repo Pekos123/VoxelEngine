@@ -65,7 +65,18 @@ namespace e
         
         if(!foccused) return; 
 
-        /*/ Movement keys
+        // Speed boost
+        if(glfwGetKey(window->GetGLFWwindow(), GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
+            speed = 120.0f;
+        else
+            speed = 40.0f;
+
+        // Mouse movement
+        Camera::MouseMovement();
+    }
+
+    void Camera::CameraMovement()
+    {
         if(glfwGetKey(window->GetGLFWwindow(), GLFW_KEY_W) == GLFW_PRESS)
             position += speed * orientation * Renderer::deltaTime;
         if(glfwGetKey(window->GetGLFWwindow(), GLFW_KEY_S) == GLFW_PRESS)
@@ -77,17 +88,7 @@ namespace e
         if (glfwGetKey(window->GetGLFWwindow(), GLFW_KEY_SPACE) == GLFW_PRESS)
 		    position += speed * up * Renderer::deltaTime;
 	    if (glfwGetKey(window->GetGLFWwindow(), GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS)
-		    position += speed * -up * Renderer::deltaTime;*/
-
-
-        // Speed boost
-        if(glfwGetKey(window->GetGLFWwindow(), GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
-            speed = 120.0f;
-        else
-            speed = 40.0f;
-
-        // Mouse movement
-        Camera::MouseMovement();
+		    position += speed * -up * Renderer::deltaTime;
     }
 }
 

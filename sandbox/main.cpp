@@ -44,6 +44,8 @@ class Sandbox : public e::Application
     std::unique_ptr<e::TextureArray> texArray;
     int currentPlacingBlockId = e::BlocksID::GRASS;
 
+    bool freeCam = false;
+
     float renderDistance = 120.0f;
     float fov = 75.0f;
 
@@ -82,16 +84,23 @@ class Sandbox : public e::Application
         {
             ImGui::Begin("Debug Window");
                 ImGui::Text("Chunks: %d", 0); // Placeholder or add world.GetChunkCount()
-                ImGui::InputFloat("Sensivity", &camera.sensivity, 0.1f, 0.5f);
-                ImGui::InputFloat("Camera Speed", &camera.speed, 0.1f);
-                ImGui::SliderFloat("Render Distance", &renderDistance, 32.0f, 800.0f);
                 ImGui::ColorEdit3("Object Color", glm::value_ptr(objectColor));
                 ImGui::ColorEdit3("Sky Color", glm::value_ptr(skyColor));
                 ImGui::DragFloat3("Light Position", glm::value_ptr(lightPos), 0.5f);
                 ImGui::ColorEdit3("Outline Color", glm::value_ptr(outlineColor));
                 ImGui::DragFloat("Outline Thickness", &outlineThickness, 0.1f, 0.1f, 5.0f);
-                ImGui::DragFloat("Fov", &fov, 0.1f, 20.f, 120.f);
                 ImGui::DragInt("Block Id", &currentPlacingBlockId, 1, e::BlocksID::GRASS, e::BlocksID::SANDSTONE);   
+            ImGui::End();
+
+            ImGui::Begin("Player");
+                ImGui::InputFloat("Sensivity", &camera.sensivity, 0.1f, 0.5f);
+                ImGui::InputFloat("Camera Speed", &camera.speed, 0.1f);
+                ImGui::SliderFloat("Render Distance", &renderDistance, 32.0f, 800.0f);
+                ImGui::DragFloat("Fov", &fov, 0.1f, 20.f, 120.f);
+                ImGui::DragFloat("Movemnt Speed (def: 5.0)", &player.speed, 1.0f, 1.0f, 100.f);
+                ImGui::DragFloat("Jump force (def: 8.0)", &player.jumpForce, 1.0f, 1.0f, 100.f);
+                ImGui::DragFloat("Gravity (def: -25.0)", &player.speed, 1.0f, -100.f, 0.f);
+                ImGui::Checkbox("Free fly", &freeCam);
             ImGui::End();
 
             // FPS Counter
@@ -228,7 +237,6 @@ class Sandbox : public e::Application
     bool rightMouseDown = false;
     void Input()
     {
-        player.HandleInput(m_Window->GetGLFWwindow(), camera.orientation);
         if (ImGui::GetIO().WantCaptureMouse) return;
 
         // Left Click: Remove Block
@@ -290,6 +298,23 @@ class Sandbox : public e::Application
             texArray->AddTexture(textureFiles[i], i);
         }
     }
+    void PlayerMovement()
+    {
+        // free cam iplementation
+        if(freeCam) 
+        {
+            player.position = camera.position - glm::vec3(0.0f, 1.7f, 0.0f);
+            camera.CameraMovement();
+        }
+        else 
+        {
+            // Update player physics
+            player.Update(e::Renderer::deltaTime, *world);
+            // Sync camera to player eye level
+            camera.position = player.position + glm::vec3(0.0f, 1.7f, 0.0f);
+            player.HandleInput(m_Window->GetGLFWwindow(), camera.orientation);
+        }
+    }
 
     static void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
     {
@@ -309,7 +334,7 @@ class Sandbox : public e::Application
     }   
     
 public:
-    Sandbox() : player({ 8.0f, 50.0f, 40.0f }), camera({ 8.0f, 50.0f, 40.0f }, m_Window.get()), uiBlockDisplay()
+    Sandbox() : player({ 8.0f, 80.0f, 40.0f }), camera({ 8.0f, 80.0f, 40.0f }, m_Window.get()), uiBlockDisplay()
     {
         std::string vPath = (e::Utils::GetRootDir() / "engine/shaders/ui/ui.vert").string();
         std::string fPath = (e::Utils::GetRootDir() / "engine/shaders/ui/ui.frag").string();
@@ -340,14 +365,11 @@ public:
 
     void OnUpdate() override
     {
+        // Update graphyics
+        
         glEnable(GL_DEPTH_TEST);
         e::Renderer::SetClearColor({ skyColor, 1.0f });
         e::Renderer::Clear();
-
-        // Update player physics
-        player.Update(e::Renderer::deltaTime, *world);
-        // Sync camera to player eye level
-        camera.position = player.position + glm::vec3(0.0f, 1.7f, 0.0f);
 
         // Dynamically load/generate chunks around camera
         world->Update(camera.position, renderDistance);
@@ -373,8 +395,12 @@ public:
             DrawUI();
         }
         
+        // Updatye inputs
+
         camera.Inputs();
         Input();
+        PlayerMovement();
+
         DebugWindowRender();
     }
 };

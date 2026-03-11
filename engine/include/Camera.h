@@ -36,6 +36,7 @@ namespace e
             void UpdateProjection(int currentWidth, int currentHeight);
             void Inputs();
             void MouseMovement();
+            void CameraMovement();
 
             glm::mat4 GetViewProjectionMatrix(float FOV, float near, float far) const;
             glm::vec3 GetPosition() const { return position; }
