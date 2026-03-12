@@ -24,8 +24,9 @@ class Sandbox : public e::Application
 {
     e::Player player;
     e::Camera camera;
-    e::World* world = new e::World(55555); // seed
+    e::World* world = nullptr;
     e::UIBlockDisplay uiBlockDisplay;
+    // ... rest of class remains similar ...
     
     std::shared_ptr<e::Shader> objShader;
     std::shared_ptr<e::Shader> outlineShader;
@@ -336,8 +337,11 @@ class Sandbox : public e::Application
     }   
     
 public:
-    Sandbox() : player({ 8.0f, 80.0f, 40.0f }), camera({ 8.0f, 80.0f, 40.0f }, m_Window.get()), uiBlockDisplay()
+    Sandbox(const std::string& savePath) 
+        : player({ 8.0f, 80.0f, 40.0f }), camera({ 8.0f, 80.0f, 40.0f }, m_Window.get()), uiBlockDisplay()
     {
+        world = new e::World(55555, savePath); // seed and save path
+
         std::string vPath = (e::Utils::GetRootDir() / "engine/shaders/ui/ui.vert").string();
         std::string fPath = (e::Utils::GetRootDir() / "engine/shaders/ui/ui.frag").string();
         std::string vSrc = e::Utils::ReadFile(vPath);
@@ -353,15 +357,14 @@ public:
         glfwSetWindowUserPointer(m_Window->GetGLFWwindow(), this);
         glfwSetScrollCallback(m_Window->GetGLFWwindow(), scroll_callback);
 
-        if (!world->LoadFromFile("world.dat")) {
-            world->GenerateWorld(5); // Start small, let Update load more
-        }
+        // We don't need LoadFromFile anymore as LoadChunk handles it
+        world->GenerateWorld(5); 
     }
 
     ~Sandbox()
     {
-        world->SaveToFile("world.dat");
         world->UnloadAllChunks();
+        delete world;
         DebugWindowShutdown();
     }
 
@@ -409,7 +412,15 @@ public:
 
 int main()
 {
-    Sandbox* app = new Sandbox();
+    std::string savePath = "saves/world";
+    if (!std::filesystem::exists("saves")) {
+        std::filesystem::create_directory("saves");
+    }
+    if (!std::filesystem::exists(savePath)) {
+        std::filesystem::create_directory(savePath);
+    }
+
+    Sandbox* app = new Sandbox(savePath);
     app->Run();
     delete app;
     return 0;

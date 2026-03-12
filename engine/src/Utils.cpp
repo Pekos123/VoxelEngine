@@ -81,5 +81,6 @@ namespace e
             vertices.push_back(v2);
             vertices.push_back(v3);
         }
+        int GetRandomNum(int min, int max){return rand()%(max-min + 1) + min;}
     }
 }

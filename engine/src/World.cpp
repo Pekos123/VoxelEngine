@@ -13,11 +13,18 @@ namespace e
                 int worldX = position.x + x;
                 int worldZ = position.z + z;
                 int surfaceHeight = gen.getHeight(worldX, worldZ);
-                for (int y = 0; y < CHUNK_HEIGHT; y++) {
+
+                // this isnt saved, it should be saved and read, bc it generates chunks that were aleardy loaded twice
+                // so thats why for example my house vanished
+                for(int y = 0; y < CHUNK_HEIGHT; y++) {
+                    //int stoneStartH = rand() % 4 - 2;
+                    int mountainStartH = Utils::GetRandomNum(55, 75);
+                    int stoneStartH = Utils::GetRandomNum(3, 7);
                     uint8_t type = 0;
-                    if (y < surfaceHeight - 4) type = 3; // Stone
-                    else if (y < surfaceHeight - 1) type = 2; // Dirt
-                    else if (y < surfaceHeight) type = 1; // Grass
+                    if (y < surfaceHeight - stoneStartH) type = BlocksID::STONE;
+                    else if (y < surfaceHeight - 1) type = BlocksID::DIRT;
+                    else if(y < surfaceHeight && surfaceHeight > mountainStartH) type = BlocksID::STONE; // for mountains
+                    else if (y < surfaceHeight) type = BlocksID::GRASS;
                     blocks[x][y][z] = type;
                 }
             }
@@ -44,7 +51,12 @@ namespace e
                         int nx = x + ox;
                         int ny = y + oy;
                         int nz = z + oz;
-                        if (ny < 0 || ny >= CHUNK_HEIGHT) return e::BlocksID::AIR;
+
+                        // If we look BELOW the bottom of the world, return a solid "Boundary" block
+                        if (ny < 0) return e::BlocksID::STONE; // Or a specific BEDROCK ID
+
+                        // If we look ABOVE the sky, it's definitely AIR
+                        if (ny >= CHUNK_HEIGHT) return e::BlocksID::AIR;
 
                         if (nx >= 0 && nx < CHUNK_SIZE && nz >= 0 && nz < CHUNK_SIZE) 
                             return blocks[nx][ny][nz];
@@ -147,51 +159,68 @@ namespace e
         if (it != chunks.end()) {
             int lx = x - cx;
             int lz = z - cz;
-            it->second.blocks[lx][y][lz] = type;
-            it->second.GenerateMesh(this);
+            if (it->second.blocks[lx][y][lz] != type) {
+                it->second.blocks[lx][y][lz] = type;
+                it->second.dirty = true;
+                it->second.GenerateMesh(this);
 
-            // Regenerate neighbors if on edge
-            if (lx == 0) { Chunk* c = GetChunk({cx - CHUNK_SIZE, 0, cz}); if(c) c->GenerateMesh(this); }
-            if (lx == CHUNK_SIZE - 1) { Chunk* c = GetChunk({cx + CHUNK_SIZE, 0, cz}); if(c) c->GenerateMesh(this); }
-            if (lz == 0) { Chunk* c = GetChunk({cx, 0, cz - CHUNK_SIZE}); if(c) c->GenerateMesh(this); }
-            if (lz == CHUNK_SIZE - 1) { Chunk* c = GetChunk({cx, 0, cz + CHUNK_SIZE}); if(c) c->GenerateMesh(this); }
+                // Regenerate neighbors if on edge
+                if (lx == 0) { Chunk* c = GetChunk({cx - CHUNK_SIZE, 0, cz}); if(c) c->GenerateMesh(this); }
+                if (lx == CHUNK_SIZE - 1) { Chunk* c = GetChunk({cx + CHUNK_SIZE, 0, cz}); if(c) c->GenerateMesh(this); }
+                if (lz == 0) { Chunk* c = GetChunk({cx, 0, cz - CHUNK_SIZE}); if(c) c->GenerateMesh(this); }
+                if (lz == CHUNK_SIZE - 1) { Chunk* c = GetChunk({cx, 0, cz + CHUNK_SIZE}); if(c) c->GenerateMesh(this); }
+            }
         }
     }
 
-    static int updateNum = 0;
-    static float timeSinceLastUnload = 0.0f;
-    void UnloadChunks(const glm::vec3& cameraPos, float renderDistance, std::unordered_map<glm::ivec3, Chunk>& chunks) {
-        float buffer = CHUNK_SIZE * 2.0f;
+    void World::SaveChunkToDisk(const Chunk& chunk)
+    {
+        if (!chunk.dirty) return; // ONLY SAVE IF MODIFIED
+
+        std::string filename = m_SavePath + "/chunk_" + std::to_string(chunk.position.x) + "_" + std::to_string(chunk.position.z) + ".dat";
+        std::ofstream out(filename, std::ios::binary);
+        if (out) {
+            out.write((char*)chunk.blocks, CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE);
+        }
+    }
+
+    void World::UnloadChunks(const glm::vec3& cameraPos, float renderDistance) {
+        float buffer = CHUNK_SIZE * 4.0f; // Increased buffer to prevent thrashing
         float threshold = renderDistance + buffer;
         float thresholdSq = threshold * threshold;      
 
+        int count = 0;
+        int maxUnloadsPerFrame = 1; // Limit unloads per frame to avoid disk I/O spikes
+
         for (auto it = chunks.begin(); it != chunks.end(); ) {
             glm::vec3 chunkPos = glm::vec3(it->first.x, 0, it->first.z);
-
-            // Distance squared is much faster (no sqrt)
             float distSq = glm::distance2(glm::vec2(cameraPos.x, cameraPos.z), 
                                           glm::vec2(chunkPos.x, chunkPos.z));       
             if (distSq > thresholdSq) {
-                it->second.DeleteBuffers(); // Clean up GPU
-                it = chunks.erase(it);      // THIS IS KEY: erase returns the next iterator
+                SaveChunkToDisk(it->second);
+                it->second.DeleteBuffers();
+                it = chunks.erase(it);
+                count++;
+                if (count >= maxUnloadsPerFrame) break; 
             } else {
                 ++it;
             }
         }
     }
+
     void World::Update(const glm::vec3& cameraPos, float renderDistance)
     {     
         int camChunkX = (int)floor(cameraPos.x / CHUNK_SIZE);
         int camChunkZ = (int)floor(cameraPos.z / CHUNK_SIZE);
         int chunkRange = (int)ceil(renderDistance / CHUNK_SIZE);
 
-        timeSinceLastUnload += Renderer::deltaTime;
-        if (timeSinceLastUnload > 1.0f) { // Unload chunks every 1 second
-            UnloadChunks(cameraPos, renderDistance, chunks);
-            timeSinceLastUnload = 0.0f;
-        }
+        // Process unloads every frame but rate-limited
+        UnloadChunks(cameraPos, renderDistance);
 
-        // Load new chunks in a spiral pattern around the camera to minimize pop-in
+        // Load new chunks in a spiral pattern around the camera
+        int loadsThisFrame = 0;
+        int maxLoadsPerFrame = 1; // Limit loads per frame to prevent stuttering
+        
         bool budgeted = false;
         for (int r = 0; r <= chunkRange; r++) {
             for (int x = -r; x <= r; x++) {
@@ -208,7 +237,12 @@ namespace e
                         for (const auto& nPos : neighbors) {
                             if (chunks.count(nPos)) chunks[nPos].GenerateMesh(this);
                         }
-                        budgeted = true; break;
+                        
+                        loadsThisFrame++;
+                        if (loadsThisFrame >= maxLoadsPerFrame) {
+                            budgeted = true;
+                            break;
+                        }
                     }
                 }
                 if (budgeted) break;
@@ -272,12 +306,31 @@ namespace e
         newChunk.vbo = std::make_shared<VertexBuffer>(nullptr, CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE * 6 * sizeof(uint32_t));
         newChunk.vbo->SetLayout({{ShaderDataType::UInt, "a_Data"}});
         newChunk.vao->AddVertexBuffer(newChunk.vbo);
-        newChunk.GenerateData(gen);
+
+        std::string filename = m_SavePath + "/chunk_" + std::to_string(chunkPos.x) + "_" + std::to_string(chunkPos.z) + ".dat";
+        std::ifstream in(filename, std::ios::binary);
+        if (in) {
+            in.read((char*)newChunk.blocks, CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE);
+        } else {
+            newChunk.GenerateData(gen);
+        }
+        
         chunks[chunkPos] = newChunk;
     }
 
-    void World::UnloadChunk(const glm::ivec3& chunkPos) { chunks.erase(chunkPos); }
-    void World::UnloadAllChunks() { chunks.clear(); }
+    void World::UnloadChunk(const glm::ivec3& chunkPos) { 
+        auto it = chunks.find(chunkPos);
+        if (it != chunks.end()) {
+            SaveChunkToDisk(it->second);
+            chunks.erase(it); 
+        }
+    }
+    void World::UnloadAllChunks() { 
+        for (auto& [pos, chunk] : chunks) {
+            SaveChunkToDisk(chunk);
+        }
+        chunks.clear(); 
+    }
 
     void World::Draw(const std::shared_ptr<Shader>& shader, const glm::vec3& cameraPos, const glm::vec3& cameraDir, float renderDistance)
     {   

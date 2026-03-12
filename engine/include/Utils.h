@@ -6,6 +6,8 @@
 #include <sstream>
 #include <vector>
 #include <filesystem>
+#include <cstdlib>
+#include <ctime>
 
 #include <glm/glm.hpp>
 
@@ -22,6 +24,7 @@ namespace e
         
         uint32_t packVertex(uint32_t x, uint32_t y, uint32_t z, uint32_t ao, uint32_t face, uint32_t vIdx, uint32_t blockID);
         void addPackedFace(std::vector<uint32_t>& vertices, int x, int y, int z, FaceDirection dir, const float* ao, uint32_t blockID);
+        int GetRandomNum(int min, int max);
     }
 }
 

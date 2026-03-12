@@ -21,6 +21,7 @@
 #include <vector>
 #include <algorithm>
 
+
 #include <OpenSimplex/OpenSimplex2S.hpp>
 
 // dodaj hight bedacy 128/256 czy cus
@@ -79,6 +80,7 @@ namespace e
     {
         uint8_t blocks[CHUNK_SIZE][CHUNK_HEIGHT][CHUNK_SIZE]; // width, height, depth
         glm::ivec3 position; // chunk position in world coordinates
+        bool dirty = false;
 
         std::shared_ptr<VertexArray> vao;
         std::shared_ptr<VertexBuffer> vbo;
@@ -123,11 +125,16 @@ namespace e
 
         RaycastResult Raycast(const glm::vec3& origin, const glm::vec3& direction, float maxDistance);
 
-        World(int seed) : gen(seed) {}
+        World(int seed, const std::string& savePath) : gen(seed), m_SavePath(savePath) {}
 
     private:
+        void SaveChunkToDisk(const Chunk& chunk);
+        void UnloadChunks(const glm::vec3& cameraPos, float renderDistance);
+
         TerrainGenerator gen;
         std::unordered_map<glm::ivec3, Chunk> chunks;
+        std::string m_SavePath;
+        float m_TimeSinceLastUnload = 0.0f;
     };
 }
 
