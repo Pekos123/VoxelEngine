@@ -366,74 +366,50 @@ namespace e
 
     RaycastResult World::Raycast(const glm::vec3& origin, const glm::vec3& direction, float maxDistance)
     {
-        glm::vec3 pos = origin;
         glm::vec3 dir = glm::normalize(direction);
-
-        glm::ivec3 currentPos = glm::floor(pos);
-        glm::vec3 deltaDist = glm::abs(1.0f / dir);
-        
+        glm::ivec3 currentPos = glm::ivec3(glm::floor(origin));
+    
+        glm::vec3 deltaDist(
+            dir.x != 0 ? glm::abs(1.0f / dir.x) : 1e30f,
+            dir.y != 0 ? glm::abs(1.0f / dir.y) : 1e30f,
+            dir.z != 0 ? glm::abs(1.0f / dir.z) : 1e30f
+        );
+    
         glm::ivec3 step;
         glm::vec3 sideDist;
-
-        if (dir.x < 0) {
-            step.x = -1;
-            sideDist.x = (pos.x - currentPos.x) * deltaDist.x;
-        } else {
-            step.x = 1;
-            sideDist.x = (currentPos.x + 1.0f - pos.x) * deltaDist.x;
-        }
-
-        if (dir.y < 0) {
-            step.y = -1;
-            sideDist.y = (pos.y - currentPos.y) * deltaDist.y;
-        } else {
-            step.y = 1;
-            sideDist.y = (currentPos.y + 1.0f - pos.y) * deltaDist.y;
-        }
-
-        if (dir.z < 0) {
-            step.z = -1;
-            sideDist.z = (pos.z - currentPos.z) * deltaDist.z;
-        } else {
-            step.z = 1;
-            sideDist.z = (currentPos.z + 1.0f - pos.z) * deltaDist.z;
-        }
-
-        float dist = 0.0f;
-        glm::ivec3 lastNormal(0);
-
-        while (dist < maxDistance) {
-            if (GetBlock(currentPos.x, currentPos.y, currentPos.z) != 0) {
-                return { true, currentPos, -lastNormal };
-            }
-
-            if (sideDist.x < sideDist.y) {
-                if (sideDist.x < sideDist.z) {
-                    dist = sideDist.x;
-                    sideDist.x += deltaDist.x;
-                    currentPos.x += step.x;
-                    lastNormal = glm::ivec3(step.x, 0, 0);
-                } else {
-                    dist = sideDist.z;
-                    sideDist.z += deltaDist.z;
-                    currentPos.z += step.z;
-                    lastNormal = glm::ivec3(0, 0, step.z);
-                }
+    
+        for (int i = 0; i < 3; i++) {
+            if (dir[i] < 0) {
+                step[i]     = -1;
+                sideDist[i] = (origin[i] - currentPos[i]) * deltaDist[i];
             } else {
-                if (sideDist.y < sideDist.z) {
-                    dist = sideDist.y;
-                    sideDist.y += deltaDist.y;
-                    currentPos.y += step.y;
-                    lastNormal = glm::ivec3(0, step.y, 0);
-                } else {
-                    dist = sideDist.z;
-                    sideDist.z += deltaDist.z;
-                    currentPos.z += step.z;
-                    lastNormal = glm::ivec3(0, 0, step.z);
-                }
+                step[i]     = 1;
+                sideDist[i] = (currentPos[i] + 1.0f - origin[i]) * deltaDist[i];
             }
         }
-
+    
+        glm::ivec3 lastNormal(0);
+    
+        while (true) {
+            // True distance check
+            float dist = glm::length(glm::vec3(currentPos) + 0.5f - origin);
+            if (dist > maxDistance) break;
+        
+            if (GetBlock(currentPos.x, currentPos.y, currentPos.z) != 0)
+                return { true, currentPos, -lastNormal };
+        
+            // Step to nearest voxel boundary
+            int axis;
+            if      (sideDist.x < sideDist.y && sideDist.x < sideDist.z) axis = 0;
+            else if (sideDist.y < sideDist.z)                             axis = 1;
+            else                                                           axis = 2;
+        
+            sideDist[axis]  += deltaDist[axis];
+            currentPos[axis] += step[axis];
+            lastNormal        = glm::ivec3(0);
+            lastNormal[axis]  = step[axis];
+        }
+    
         return { false, glm::ivec3(0), glm::ivec3(0) };
     }
 }

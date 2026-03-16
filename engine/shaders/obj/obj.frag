@@ -15,12 +15,14 @@ uniform vec3 viewPos;
 uniform vec3 lightColor;
 uniform vec3 objectColor;
 
+uniform vec3 sunPos;
+
 void main() {
     vec3 norm = normalize(Normal);
     vec3 viewDir = normalize(viewPos - FragPos);
 
     // --- 1. GLOBAL SUN LIGHT ---
-    vec3 sunDir = normalize(vec3(0.5, 1.0, 0.3)); 
+    vec3 sunDir = normalize(sunPos); 
     vec3 sunColor = vec3(1.0, 0.98, 0.9); // Warm sunlight
     
     float sunDiff = max(dot(norm, sunDir), 0.0);

@@ -34,6 +34,7 @@ class Sandbox : public e::Application
     glm::vec3 lightPos = { 10.0f, 20.0f, 10.0f };
     glm::vec3 objectColor = { 1.f, 1.f, 1.0f }; // White bc of textures
     glm::vec3 skyColor = {0.7f, 0.7f, 0.95f};
+    glm::vec3 sunPos = { 0.5f, 1.f, 0.3f };
 
     // Outline
     glm::vec3 outlineColor = { 0.0f, 0.0f, 0.0f }; // Black
@@ -90,8 +91,12 @@ class Sandbox : public e::Application
                 ImGui::DragFloat3("Light Position", glm::value_ptr(lightPos), 0.5f);
                 ImGui::ColorEdit3("Outline Color", glm::value_ptr(outlineColor));
                 ImGui::DragFloat("Outline Thickness", &outlineThickness, 0.1f, 0.1f, 5.0f);
-                ImGui::DragInt("Block Id", &currentPlacingBlockId, 1, e::BlocksID::GRASS, e::BlocksID::SANDSTONE);   
+                ImGui::DragInt("Block Id", &currentPlacingBlockId, 1, e::BlocksID::GRASS, e::BlocksID::SANDSTONE);
+                ImGui::DragFloat3("SunPos: ", glm::value_ptr(sunPos), 0.05f, 0.0f, 1.f);
+                if(ImGui::Button("Recompile shaders", {150, 30}))
+                    LoadShaders();
             ImGui::End();
+
 
             ImGui::Begin("Player");
                 ImGui::InputFloat("Sensivity", &camera.sensivity, 0.1f, 0.5f);
@@ -386,6 +391,7 @@ public:
             objShader->SetUniformMat4("u_ViewProj", viewProj);
 
             objShader->SetUniformFloat3("lightPos", lightPos);
+            objShader->SetUniformFloat3("sunPos", sunPos);
             objShader->SetUniformFloat3("viewPos", camera.position);
             objShader->SetUniformFloat3("lightColor", { 1.0f, 1.0f, 1.0f });
             objShader->SetUniformFloat3("objectColor", objectColor);
