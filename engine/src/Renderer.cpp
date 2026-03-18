@@ -27,6 +27,7 @@ namespace e
     void Renderer::DrawIndexed(const std::shared_ptr<VertexArray>& vertexArray)
     {
         vertexArray->Bind();
-        glDrawElements(GL_TRIANGLES, vertexArray->GetIndexBuffer()->GetCount(), GL_UNSIGNED_INT, nullptr);
+        vertexArray->GetIndexBuffer()->Bind();
+        glDrawElements(GL_TRIANGLES, vertexArray->GetIndexBuffer()->GetCount(), GL_UNSIGNED_INT, 0);
     }
 }

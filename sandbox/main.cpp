@@ -30,6 +30,7 @@ class Sandbox : public e::Application
     
     std::shared_ptr<e::Shader> objShader;
     std::shared_ptr<e::Shader> outlineShader;
+    std::shared_ptr<e::Shader> uiShader;
 
     glm::vec3 lightPos = { 10.0f, 20.0f, 10.0f };
     glm::vec3 objectColor = { 1.f, 1.f, 1.0f }; // White bc of textures
@@ -39,42 +40,22 @@ class Sandbox : public e::Application
     // Outline
     glm::vec3 outlineColor = { 0.0f, 0.0f, 0.0f }; // Black
     float outlineThickness = 2.0f;
+
+    // Buffers
     std::unique_ptr<e::VertexArray> outlineVAO;
     std::shared_ptr<e::VertexBuffer> vbo;
     std::shared_ptr<e::IndexBuffer> ib;
 
+    // Texture
     std::unique_ptr<e::TextureArray> texArray;
     int currentPlacingBlockId = e::BlocksID::GRASS;
 
+    // Player
     bool freeCam = false;
-
     float renderDistance = 120.0f;
     float fov = 75.0f;
 
-    void RenderCrosshair()
-    {
-        ImGuiViewport* viewport = ImGui::GetMainViewport();
-        ImVec2 center = viewport->GetCenter();
-        ImDrawList* draw_list = ImGui::GetForegroundDrawList();
-
-        float crosshairSize = 10.0f;
-        float thickness = 2.0f;
-        ImU32 color = IM_COL32(255, 255, 255, 200); // White with some transparency
-
-        // Horizontal line
-        draw_list->AddLine(
-            ImVec2(center.x - crosshairSize, center.y),
-            ImVec2(center.x + crosshairSize, center.y),
-            color, thickness
-        );
-        // Vertical line
-        draw_list->AddLine(
-            ImVec2(center.x, center.y - crosshairSize),
-            ImVec2(center.x, center.y + crosshairSize),
-            color, thickness
-        );
-    }
-
+    // IMGUI 
     void DebugWindowRender()
     {
         ImGui_ImplOpenGL3_NewFrame();
@@ -145,6 +126,31 @@ class Sandbox : public e::Application
         ImGui::DestroyContext();
     }
 
+    void RenderCrosshair()
+    {
+        ImGuiViewport* viewport = ImGui::GetMainViewport();
+        ImVec2 center = viewport->GetCenter();
+        ImDrawList* draw_list = ImGui::GetForegroundDrawList();
+
+        float crosshairSize = 10.0f;
+        float thickness = 2.0f;
+        ImU32 color = IM_COL32(255, 255, 255, 200); // White with some transparency
+
+        // Horizontal line
+        draw_list->AddLine(
+            ImVec2(center.x - crosshairSize, center.y),
+            ImVec2(center.x + crosshairSize, center.y),
+            color, thickness
+        );
+        // Vertical line
+        draw_list->AddLine(
+            ImVec2(center.x, center.y - crosshairSize),
+            ImVec2(center.x, center.y + crosshairSize),
+            color, thickness
+        );
+    }
+    // IMGUI END
+   
     void SetupOutlineBuffer()
     {
         float cubeVertices[] = {
@@ -179,17 +185,53 @@ class Sandbox : public e::Application
 
         std::string outlineVPath = (e::Utils::GetRootDir() / "engine/shaders/outline/outline.vert").string();
         std::string outlineFPath = (e::Utils::GetRootDir() / "engine/shaders/outline/outline.frag").string();
-        
         std::string outlineFSrc = e::Utils::ReadFile(outlineFPath);
         std::string outlineVSrc = e::Utils::ReadFile(outlineVPath); // Using same source for vert and frag
+
+        std::string uiVPath = (e::Utils::GetRootDir() / "engine/shaders/ui/ui.vert").string();
+        std::string uiFPath = (e::Utils::GetRootDir() / "engine/shaders/ui/ui.frag").string();
+        std::string uiFSrc = e::Utils::ReadFile(uiFPath);
+        std::string uiVSrc = e::Utils::ReadFile(uiVPath); // Using same source for vert and frag
 
         if (vSrc.empty() || fSrc.empty()) {
             std::cerr << "CRITICAL: Shader source is empty!" << std::endl;
             return;
         }
+        if (uiVSrc.empty() || uiFSrc.empty()) {
+            std::cerr << "ui shader source empty! path: " << uiVPath << std::endl;
+            return;
+        }
 
         objShader = std::make_shared<e::Shader>(vSrc, fSrc);
         outlineShader = std::make_shared<e::Shader>(outlineVSrc, outlineFSrc); // Using same source for vert and frag
+        uiBlockDisplay.CompileShaders(uiVSrc, uiFSrc);
+    }
+    void LoadTextures() 
+    {
+
+
+        // 1. Identify common textures we want to use
+        std::vector<std::string> textureFiles = {
+            (e::Utils::GetRootDir() / "textures/blocks/grass_top.png").string(),
+            (e::Utils::GetRootDir() / "textures/blocks/dirt.png").string(),
+            (e::Utils::GetRootDir() / "textures/blocks/stone_generic.png").string(),
+            (e::Utils::GetRootDir() / "textures/blocks/oak_planks.png").string(),
+            (e::Utils::GetRootDir() / "textures/blocks/oak_log_side.png").string(),
+            (e::Utils::GetRootDir() / "textures/blocks/cobblestone.png").string(),
+            (e::Utils::GetRootDir() / "textures/blocks/glass.png").string(),
+            // if u want to add new block place it here, also dont forget to update
+            // blocks in World.h -> BlocksID
+            (e::Utils::GetRootDir() / "textures/blocks/sandstone.png").string() // lets sandstone be last block (HARDCODED)
+        };
+
+        // 2. Initialize TextureArray with the number of textures we have
+        // Assuming 16x16 pixels based on voxel standards and file sizes
+        texArray = std::make_unique<e::TextureArray>(16, 16, (uint32_t)textureFiles.size());
+
+        // 3. Load each texture into its respective layer
+        for (uint32_t i = 0; i < textureFiles.size(); ++i) {
+            texArray->AddTexture(textureFiles[i], i);
+        }
     }
 
     // draw outline around targeted block
@@ -238,7 +280,30 @@ class Sandbox : public e::Application
            width, height
         );
     }
-    
+    void DrawWorld()
+    {
+        if (objShader) {
+            objShader->Bind();
+            
+            glm::mat4 viewProj = camera.GetViewProjectionMatrix(fov, 0.1f, 1000.0f);
+            objShader->SetUniformMat4("u_ViewProj", viewProj);
+
+            objShader->SetUniformFloat3("lightPos", lightPos);
+            objShader->SetUniformFloat3("sunPos", sunPos);
+            objShader->SetUniformFloat3("viewPos", camera.position);
+            objShader->SetUniformFloat3("lightColor", { 1.0f, 1.0f, 1.0f });
+            objShader->SetUniformFloat3("objectColor", objectColor);
+
+            if (texArray) {
+                texArray->Bind(0);
+                objShader->SetUniformInt("u_Textures", 0);
+            }
+
+            world->Draw(objShader, camera.position, camera.orientation, renderDistance);
+            DrawOutline(viewProj);
+        }
+    }
+    // INPUTS
     bool leftMouseDown = false;
     bool rightMouseDown = false;
     void Input()
@@ -278,34 +343,6 @@ class Sandbox : public e::Application
             rightMouseDown = false;
         }
     }
-    
-    void LoadTextures()
-    {
-
-
-        // 1. Identify common textures we want to use
-        std::vector<std::string> textureFiles = {
-            (e::Utils::GetRootDir() / "textures/blocks/grass_top.png").string(),
-            (e::Utils::GetRootDir() / "textures/blocks/dirt.png").string(),
-            (e::Utils::GetRootDir() / "textures/blocks/stone_generic.png").string(),
-            (e::Utils::GetRootDir() / "textures/blocks/oak_planks.png").string(),
-            (e::Utils::GetRootDir() / "textures/blocks/oak_log_side.png").string(),
-            (e::Utils::GetRootDir() / "textures/blocks/cobblestone.png").string(),
-            (e::Utils::GetRootDir() / "textures/blocks/glass.png").string(),
-            // if u want to add new block place it here, also dont forget to update
-            // blocks in World.h -> BlocksID
-            (e::Utils::GetRootDir() / "textures/blocks/sandstone.png").string() // lets sandstone be last block (HARDCODED)
-        };
-
-        // 2. Initialize TextureArray with the number of textures we have
-        // Assuming 16x16 pixels based on voxel standards and file sizes
-        texArray = std::make_unique<e::TextureArray>(16, 16, (uint32_t)textureFiles.size());
-
-        // 3. Load each texture into its respective layer
-        for (uint32_t i = 0; i < textureFiles.size(); ++i) {
-            texArray->AddTexture(textureFiles[i], i);
-        }
-    }
     void PlayerMovement()
     {
         // free cam iplementation
@@ -323,7 +360,6 @@ class Sandbox : public e::Application
             player.HandleInput(m_Window->GetGLFWwindow(), camera.orientation);
         }
     }
-
     static void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
     {
         // 1. Get the pointer back from GLFW
@@ -340,23 +376,16 @@ class Sandbox : public e::Application
             if (instance->currentPlacingBlockId < 1) instance->currentPlacingBlockId = 8;
         }
     }   
-    
+    // INPUTS END
 public:
     Sandbox(const std::string& savePath) 
         : player({ 8.0f, 80.0f, 40.0f }), camera({ 8.0f, 80.0f, 40.0f }, m_Window.get()), uiBlockDisplay()
     {
         world = new e::World(55555, savePath); // seed and save path
-
-        std::string vPath = (e::Utils::GetRootDir() / "engine/shaders/ui/ui.vert").string();
-        std::string fPath = (e::Utils::GetRootDir() / "engine/shaders/ui/ui.frag").string();
-        std::string vSrc = e::Utils::ReadFile(vPath);
-        std::string fSrc = e::Utils::ReadFile(fPath);
-
-        uiBlockDisplay.CompileShaders(vSrc, fSrc);
         
         DebugWindowInit();   
-        LoadShaders();
         LoadTextures();
+        LoadShaders();
         SetupOutlineBuffer();
 
         glfwSetWindowUserPointer(m_Window->GetGLFWwindow(), this);
@@ -376,43 +405,23 @@ public:
     void OnUpdate() override
     {
         // Update graphyics
-        
-        glEnable(GL_DEPTH_TEST);
         e::Renderer::SetClearColor({ skyColor, 1.0f });
         e::Renderer::Clear();
 
         // Dynamically load/generate chunks around camera
         world->Update(camera.position, renderDistance);
+        DrawWorld();
+        DrawUI();
 
-        if (objShader) {
-            objShader->Bind();
-            
-            glm::mat4 viewProj = camera.GetViewProjectionMatrix(fov, 0.1f, 1000.0f);
-            objShader->SetUniformMat4("u_ViewProj", viewProj);
-
-            objShader->SetUniformFloat3("lightPos", lightPos);
-            objShader->SetUniformFloat3("sunPos", sunPos);
-            objShader->SetUniformFloat3("viewPos", camera.position);
-            objShader->SetUniformFloat3("lightColor", { 1.0f, 1.0f, 1.0f });
-            objShader->SetUniformFloat3("objectColor", objectColor);
-
-            if (texArray) {
-                texArray->Bind(0);
-                objShader->SetUniformInt("u_Textures", 0);
-            }
-
-            world->Draw(objShader, camera.position, camera.orientation, renderDistance);
-            DrawOutline(viewProj);
-            DrawUI();
-        }
+        // i think i will need that to propely display ui
+        // glm::mat4 uiProj = glm::ortho<glm::mat4>(0.0f, (float)m_Window->GetWidth(), (float)m_Window->GetWidth(), 0.0f, -1.0f, 1.0f);
         
-        // Updatye inputs
-
+        // Update inputs
         camera.Inputs();
         Input();
         PlayerMovement();
 
-        DebugWindowRender();
+        DebugWindowRender(); // At the end to be on top of eveything else
     }
 };
 

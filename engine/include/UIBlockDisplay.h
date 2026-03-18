@@ -1,16 +1,21 @@
 #ifndef UIBLOCKDISPLAY_H
 #define UIBLOCKDISPLAY_H
 
-#include <Shader.h>
-#include <glm/glm.hpp>
+#pragma once
 #include <memory>
-#include <string>
+
+#include <glm/glm.hpp>
+#include <glad/glad.h>
+
+#include "Renderer.h"
+#include "VertexArray.h"
+#include "Shader.h"
 
 namespace e {
     class UIBlockDisplay {
     public:
         UIBlockDisplay();
-        ~UIBlockDisplay();
+        //~UIBlockDisplay();
 
         // Compiles shaders from source strings
         void CompileShaders(const std::string& vertexSrc, const std::string& fragmentSrc);
@@ -22,6 +27,10 @@ namespace e {
         uint32_t m_VaoID = 0;
         uint32_t m_VboID = 0;
         uint32_t m_IboID = 0;
+
+        std::shared_ptr<e::VertexArray> vao;
+        std::shared_ptr<e::VertexBuffer> vbo;
+        std::shared_ptr<e::IndexBuffer> ibo;
         
         std::shared_ptr<Shader> m_Shader;
         
