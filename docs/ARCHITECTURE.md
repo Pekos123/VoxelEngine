@@ -17,41 +17,51 @@ The engine uses a standard "Application-Loop" pattern:
 3. **Loop**: The `Run()` method contains the main engine loop, which calls `OnUpdate()` in every frame.
 4. **Shutdown**: Resources are cleaned up in the destructors of the various classes.
 
+## 👤 Player & Physics System
+The `e::Player` class handles movement and collision detection:
+- **AABB Collision**: Uses Axis-Aligned Bounding Boxes to detect intersections with solid blocks.
+- **Physics**: Implements gravity, jumping, and friction-based movement.
+- **Collision Resolution**: Collisions are resolved axis-by-axis to allow for smooth sliding along walls and floors.
+
 ## 🎨 Rendering Pipeline
 
 ### `e::Renderer`
 A static class responsible for global rendering state and execution.
-- **Clear & Colors**: Manages background clear color and buffer clearing.
-- **DrawIndexed**: Takes a `VertexArray` and executes the OpenGL draw call.
+
+### Texture Management
+- **`e::TextureArray`**: Used for block textures to enable efficient batching. Shaders use a `layer` index to select the correct texture from the array, avoiding frequent texture swaps.
+- **`e::Texture2D`**: Used for standard single-image textures (e.g., UI elements).
 
 ### Abstraction Layer
 The engine wraps low-level OpenGL objects into clean C++ classes:
-- **`Buffer`**: Wraps `VBO` (Vertex Buffer Object) and `EBO` (Element Buffer Object). Supports data layouts for vertex attributes.
-- **`VertexArray`**: Wraps `VAO` (Vertex Array Object), managing the relationship between buffers and attribute pointers.
-- **`Shader`**: Manages the compilation, linking, and uniform setting of GLSL shaders.
+- **`Buffer`**: Wraps `VBO` (Vertex Buffer Object) and `EBO` (Element Buffer Object).
+- **`VertexArray`**: Wraps `VAO` (Vertex Array Object).
+- **`Shader`**: Manages GLSL shaders.
 
 ## 🎥 Camera System
 The `e::Camera` class handles the view and projection matrices. It supports:
-- **Input Handling**: Processes keyboard (WASD) and mouse movement (right-click to rotate) to update the camera's transform.
-- **Math**: Uses GLM to calculate the View-Projection matrix required for vertex shaders.
+- **Input Handling**: Processes keyboard and mouse movement to update the camera's transform.
+- **Math**: Calculates the View-Projection matrix required for vertex shaders.
 
 ## 🧱 Voxel Engine System
 
 ### Chunks & World
-The engine implements a chunk-based voxel system:
-- **`e::World`**: A manager class that stores loaded chunks in an `unordered_map`. It handles dynamic loading/unloading based on camera distance and manages terrain generation.
-- **`e::Chunk`**: Represents a 16x16x16 cube of blocks. Each chunk generates its own mesh only when needed (on load or when a block is modified).
+- **`e::World`**: Manages a dynamic set of `e::Chunk` objects. It handles:
+    - **Dynamic Loading**: Loads and unloads chunks based on the player's position and render distance.
+    - **Persistence**: Supports saving and loading world data to/from binary files.
+- **`e::Chunk`**: Represents a 16x128x16 region of blocks.
 
-### Performance: Data Packing
+### Terrain Generation
+- **`e::TerrainGenerator`**: Uses **OpenSimplex2S** noise to generate procedural landscapes. It combines continental noise (biomes/mountains) with detail noise for realistic terrain.
+
+### Performance: Data Packing & AO
 To maximize rendering efficiency, the engine uses **bit-packing** for vertex data:
-- **Memory Optimization**: Instead of storing floats for positions and normals (36 bytes per vertex), the engine packs all necessary data into a single 32-bit integer (4 bytes).
-- **GPU Decoding**: The vertex shader (`obj.vert`) decodes this integer at runtime to reconstruct the geometry.
-- **Face Culling**: Faces between adjacent opaque blocks are skipped during mesh generation to reduce the polygon count.
+- **Memory Optimization**: Vertex data is packed into a single 32-bit integer.
+- **Ambient Occlusion (AO)**: During mesh generation, the engine calculates per-vertex AO values based on neighboring blocks, which are also packed into the vertex data.
+- **Block ID**: Each vertex carries its block ID, used by the shader to index into the `TextureArray`.
 
-### World Queries: DDA Raycasting
-Interaction with blocks is handled through a **Digital Differential Analyzer (DDA)** algorithm:
-- **Accuracy**: It ensures every block along the ray path is checked precisely.
-- **Normal Detection**: Returns the face normal of the hit block, which is used for correct block placement.
+## 🖼 UI System
+The `e::UIBlockDisplay` class allows rendering 3D block icons directly onto the 2D screen, typically used for inventories or hotbars. It uses specialized shaders to project a small cube with the correct block textures.
 
 ## 🔧 Utilities
-`e::Utils` provides common helper functions, such as `ReadFile`, and the core logic for **geometry construction** through `addPackedFace`.
+`e::Utils` provides common helper functions, such as `ReadFile`, random number generation, and the core logic for **geometry construction** through `addPackedFace`.

@@ -14,13 +14,51 @@ The base class for your application. Inherit from this to create your own projec
 
 ---
 
+## 👤 `e::Player`
+Manages player state, physics, and collisions.
+
+### Methods
+- `Player(glm::vec3 spawnPos)`: Initializes the player.
+- `void Update(float deltaTime, World& world)`: Updates position and resolves collisions.
+- `void HandleInput(GLFWwindow* window, glm::vec3 camOrientation)`: Processes movement and jumping.
+- `Box GetAABB() const`: Returns the player's Axis-Aligned Bounding Box.
+- `bool CanPlaceBlock(const glm::ivec3& targetBlockPos) const`: Checks if a block can be placed without intersecting the player.
+
+---
+
+## 🎨 `e::TextureArray` & `e::Texture2D`
+Manages OpenGL textures.
+
+### `e::TextureArray` Methods
+- `TextureArray(uint32_t width, uint32_t height, uint32_t layers)`: Creates a 2D Texture Array.
+- `void AddTexture(const std::string& path, uint32_t layer)`: Loads an image into a specific layer.
+- `void Bind(uint32_t slot = 0)`: Binds the texture array to a texture unit.
+
+### `e::Texture2D` Methods
+- `Texture2D(const std::string& path)`: Loads a standard 2D texture.
+- `void Bind(uint32_t slot = 0)`: Binds the texture.
+
+---
+
+## 🖼 `e::UIBlockDisplay`
+Handles rendering 3D block icons in the UI.
+
+### Methods
+- `void DrawBlockIcon(uint32_t textureID, int blockId, glm::vec2 screenPos, float size, int screenWidth, int screenHeight)`: Renders a block icon at the specified screen position.
+
+---
+
 ## 🖌 `e::Renderer`
 A static class for handling global rendering tasks.
 
 ### Methods
 - `static void Clear()`: Clears the current color and depth buffers.
 - `static void SetClearColor(const glm::vec4& color)`: Sets the background color.
-- `static void DrawIndexed(const std::shared_ptr<VertexArray>& vertexArray)`: Executes a draw call for the given vertex array.
+- `static void Draw(const std::shared_ptr<VertexArray>& vertexArray, uint32_t vertexCount)`: Executes a draw call for a specified number of vertices.
+- `static void DrawIndexed(const std::shared_ptr<VertexArray>& vertexArray)`: Executes a draw call for the given vertex array using its index buffer.
+
+### Properties
+- `static float deltaTime`: Time elapsed since the last frame (useful for framerate-independent logic).
 
 ---
 
@@ -49,9 +87,9 @@ Wraps an OpenGL shader program.
 Manages the view and projection matrices and player input.
 
 ### Methods
-- `Camera(int width, int height, glm::vec3 position)`: Initializes the camera.
+- `Camera(glm::vec3 pos, Window* window)`: Initializes the camera.
 - `glm::mat4 GetViewProjectionMatrix(...)`: Calculates and returns the combined VP matrix.
-- `void Inputs(Window* window)`: Processes keyboard and mouse input (WASD + mouse rotation).
+- `void Inputs()`: Processes keyboard and mouse input.
 
 ---
 
@@ -59,19 +97,21 @@ Manages the view and projection matrices and player input.
 Manages chunks, terrain generation, and world-space queries.
 
 ### Methods
-- `void Update(const glm::vec3& cameraPos, float renderDistance)`: Dynamically loads/unloads chunks based on camera position.
+- `void Update(const glm::vec3& cameraPos, float renderDistance)`: Dynamically loads/unloads chunks.
 - `void Draw(const std::shared_ptr<Shader>& shader, ...)`: Renders all chunks within range.
 - `uint8_t GetBlock(int x, int y, int z)`: Returns the block type at world coordinates.
-- `void SetBlock(int x, int y, int z, uint8_t type)`: Sets a block at world coordinates and updates the mesh.
+- `void SetBlock(int x, int y, int z, uint8_t type)`: Sets a block at world coordinates.
+- `void SaveToFile(const std::string& filename)`: Persists the world state to disk.
+- `bool LoadFromFile(const std::string& filename)`: Loads a world state from disk.
 - `RaycastResult Raycast(const glm::vec3& origin, const glm::vec3& direction, float maxDistance)`: Finds the first solid block in a given direction.
 
 ---
 
 ## 🧊 `e::Chunk`
-A 16x16x16 container for voxel data.
+A 16x128x16 container for voxel data.
 
 ### Properties
-- `uint8_t blocks[16][16][16]`: The raw voxel data.
+- `uint8_t blocks[16][128][16]`: The raw voxel data.
 - `glm::ivec3 position`: The world-space origin of this chunk.
 
 ---
@@ -91,5 +131,5 @@ Static helper functions for file I/O and data packing.
 
 ### Methods
 - `static std::string ReadFile(const std::string& filePath)`: Reads a text file.
-- `uint32_t packVertex(...)`: Packs vertex attributes into a single 32-bit integer.
+- `uint32_t packVertex(x, y, z, ao, face, vIdx, blockID)`: Packs vertex attributes into a 32-bit integer.
 - `void addPackedFace(...)`: Generates packed geometry for a single cube face.
