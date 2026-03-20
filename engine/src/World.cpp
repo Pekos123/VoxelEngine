@@ -6,8 +6,8 @@ namespace e
         if (side1 && side2) return 0.0f;
         return (3.0f - (float(side1) + float(side2) + float(corner))) / 3.0f;
     }
-
-    void Chunk::GenerateData(TerrainGenerator& gen) {
+    void Chunk::GenerateTerrain(TerrainGenerator& gen)
+    {
         for (int x = 0; x < CHUNK_SIZE; x++) {
             for (int z = 0; z < CHUNK_SIZE; z++) {
                 int worldX = position.x + x;
@@ -29,6 +29,29 @@ namespace e
                 }
             }
         }
+    }
+    void Chunk::GenerateTrees(TerrainGenerator& gen, World* world)
+    {
+        int step = 4; // minimum 4 blocks apart
+        for (int x = 0; x < CHUNK_SIZE; x += step) {
+            for (int z = 0; z < CHUNK_SIZE; z += step) {
+                int worldX = position.x + x;
+                int worldZ = position.z + z;
+                int y = gen.getHeight(worldX, worldZ);
+            
+                if (blocks[x][y-1][z] == BlocksID::GRASS) {
+                    if (Utils::GetRandomNum(0, 100) < 3) { // 3% chance per step
+                        world->AddTree(worldX, y, worldZ);
+                    }
+                }
+            }
+        }
+        tressGenerated = true;
+    }
+    void Chunk::GenerateData(TerrainGenerator& gen, World* world) 
+    {
+        GenerateTerrain(gen);
+        if(!tressGenerated) GenerateTrees(gen, world); // there is bug, even tho tress are generated its stil genarte like this bool dont hcnage at all
     }
 
     void Chunk::GenerateMesh(World* world) {
@@ -149,7 +172,6 @@ namespace e
         auto it = chunks.find({cx, 0, cz});
         return (it != chunks.end()) ? it->second.blocks[x - cx][y][z - cz] : 0;
     }
-
     void World::SetBlock(int x, int y, int z, uint8_t type)
     {
         if (y < 0 || y >= CHUNK_HEIGHT) return;
@@ -162,7 +184,8 @@ namespace e
             if (it->second.blocks[lx][y][lz] != type) {
                 it->second.blocks[lx][y][lz] = type;
                 it->second.dirty = true;
-                it->second.GenerateMesh(this);
+                if(!it->second.isGenerating)
+                    it->second.GenerateMesh(this);
 
                 // Regenerate neighbors if on edge
                 if (lx == 0) { Chunk* c = GetChunk({cx - CHUNK_SIZE, 0, cz}); if(c) c->GenerateMesh(this); }
@@ -172,7 +195,20 @@ namespace e
             }
         }
     }
+    bool World::SetBlockData(int x, int y, int z, uint8_t type)
+    {
+        if (y < 0 || y >= CHUNK_HEIGHT) return false;
+        int cx = (int)floor((float)x / CHUNK_SIZE) * CHUNK_SIZE;
+        int cz = (int)floor((float)z / CHUNK_SIZE) * CHUNK_SIZE; 
 
+        Chunk* chunk = GetChunk({cx, 0, cz});
+        if (!chunk) return false; // Neighbor not loaded yet      
+
+        chunk->blocks[x - cx][y][z - cz] = type;
+        chunk->dirty = true;
+        return true;
+    }
+    
     void World::SaveChunkToDisk(const Chunk& chunk)
     {
         if (!chunk.dirty) return; // ONLY SAVE IF MODIFIED
@@ -299,25 +335,48 @@ namespace e
 
     void World::LoadChunk(const glm::ivec3& chunkPos)
     {
+        // Already loaded? skip
         if (chunks.find(chunkPos) != chunks.end()) return;
-        Chunk newChunk;
-        newChunk.position = chunkPos;
-        newChunk.vao = std::make_shared<VertexArray>();
-        newChunk.vbo = std::make_shared<VertexBuffer>(nullptr, CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE * 6 * sizeof(uint32_t));
-        newChunk.vbo->SetLayout({{ShaderDataType::UInt, "a_Data"}});
-        newChunk.vao->AddVertexBuffer(newChunk.vbo);
 
+        // Insert a chunk in the map first, get a reference
+        Chunk& chunk = chunks[chunkPos];
+        chunk.position = chunkPos;
+
+        // Setup VAO/VBO for the chunk
+        chunk.vao = std::make_shared<VertexArray>();
+        chunk.vbo = std::make_shared<VertexBuffer>(
+            nullptr, CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE * 6 * sizeof(uint32_t)
+        );
+        chunk.vbo->SetLayout({{ShaderDataType::UInt, "a_Data"}});
+        chunk.vao->AddVertexBuffer(chunk.vbo);
+
+        // Try to load from disk
         std::string filename = m_SavePath + "/chunk_" + std::to_string(chunkPos.x) + "_" + std::to_string(chunkPos.z) + ".dat";
         std::ifstream in(filename, std::ios::binary);
-        if (in) {
-            in.read((char*)newChunk.blocks, CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE);
-        } else {
-            newChunk.GenerateData(gen);
-        }
-        
-        chunks[chunkPos] = newChunk;
-    }
 
+        if (in) {
+            in.read((char*)chunk.blocks, CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE);
+        } else {
+            // Mark as generating to prevent SetBlock from regenerating mesh mid-tree
+            chunk.isGenerating = true;
+            // Generate terrain + trees in the chunk
+            chunk.GenerateData(gen, this);
+            chunk.isGenerating = false;
+            // Generate mesh once at the end
+            chunk.GenerateMesh(this);
+        }
+    }
+    void World::MarkChunkAffected(int x, int y, int z, std::unordered_set<Chunk*>& set)
+    {
+        int chunkX = (int)floor((float)x / CHUNK_SIZE) * CHUNK_SIZE;
+        int chunkZ = (int)floor((float)z / CHUNK_SIZE) * CHUNK_SIZE;
+
+        Chunk* chunk = GetChunk({chunkX, 0, chunkZ});
+        if (chunk)
+        {
+            set.insert(chunk);
+        }
+    }
     void World::UnloadChunk(const glm::ivec3& chunkPos) { 
         auto it = chunks.find(chunkPos);
         if (it != chunks.end()) {
@@ -355,6 +414,49 @@ namespace e
                 shader->SetUniformFloat3("u_ChunkPos", glm::vec3(chunk.position));
                 Renderer::Draw(chunk.vao, (uint32_t)chunk.vertexCount);
             }
+        }
+    }
+    void World::AddTree(int x, int y, int z)
+    {
+        std::unordered_set<Chunk*> chunksAffected; // for chunks that tree is growing on
+        
+        int chunkX = (int)floor(x / CHUNK_SIZE) * CHUNK_SIZE;
+        int chunkZ = (int)floor(z / CHUNK_SIZE) * CHUNK_SIZE;
+
+        for (Chunk* ch : chunksAffected)
+            ch->isGenerating = true;
+
+
+        int treeHeight = e::Utils::GetRandomNum(3, 6);
+        for(int i = 0; i < treeHeight; i++)
+        {
+            SetBlockData(x, y+i, z, BlocksID::OAK_LOG);
+        }
+        
+        // Place leaves
+        int canopyHeight = 3;
+        for(int i = 0; i < canopyHeight; i++)
+        {
+            int radius = canopyHeight - i;
+            for(int xa = -radius; xa <= radius; xa++)
+            {
+                for(int za = -radius; za <= radius; za++)
+                {
+                    if(xa == 0 && za == 0 && i < canopyHeight - 1) continue;
+
+                    int bx = x + xa;
+                    int by = y + treeHeight - canopyHeight + i;
+                    int bz = z + za;
+
+                    SetBlockData(bx, by, bz, BlocksID::OAK_LEAVES);
+                    MarkChunkAffected(bx, by, bz, chunksAffected);
+                }
+            }
+        }
+        for (Chunk* ch : chunksAffected)
+        {
+            ch->isGenerating = false;
+            ch->GenerateMesh(this);
         }
     }
 

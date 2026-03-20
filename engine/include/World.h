@@ -20,6 +20,7 @@
 #include <iostream>
 #include <vector>
 #include <algorithm>
+#include <unordered_set>
 
 
 #include <OpenSimplex/OpenSimplex2S.hpp>
@@ -43,7 +44,8 @@ namespace e
         OAK_LOG,
         COBBLESTONE,
         GLASS,
-        SANDSTONE
+        OAK_LEAVES,
+        SANDSTONE // LAST BLOCK ALWAYS
     };
 
     class TerrainGenerator
@@ -80,13 +82,18 @@ namespace e
     {
         uint8_t blocks[CHUNK_SIZE][CHUNK_HEIGHT][CHUNK_SIZE]; // width, height, depth
         glm::ivec3 position; // chunk position in world coordinates
+
         bool dirty = false;
+        bool tressGenerated = false;
+        bool isGenerating = false;
 
         std::shared_ptr<VertexArray> vao;
         std::shared_ptr<VertexBuffer> vbo;
         int vertexCount = 0;
         
-        void GenerateData(TerrainGenerator& gen); // step 1: fill array
+        void GenerateData(TerrainGenerator& gen, World* world); // step 1: fill array
+        void GenerateTerrain(TerrainGenerator& gen);
+        void GenerateTrees(TerrainGenerator& gen, World* world);
         void GenerateMesh(World* world); // step 2: create vertices
         
         void DeleteBuffers() {
@@ -115,6 +122,9 @@ namespace e
         void UnloadChunk(const glm::ivec3& chunkPos);
         void UnloadAllChunks();
         Chunk* GetChunk(const glm::ivec3& chunkPos);
+        void MarkChunkAffected(int x, int y, int z, std::unordered_set<Chunk*>& set);
+
+        void AddTree(int x, int y, int z);
 
         //Debug
         int GetLoadedChunkCount() const { return (int)chunks.size(); }
@@ -122,6 +132,9 @@ namespace e
         // Helper to get block at any world coordinate
         uint8_t GetBlock(int x, int y, int z);
         void SetBlock(int x, int y, int z, uint8_t type);
+        // Setting block without rebuild all neighnour etc.
+        bool SetBlockData(int x, int y, int z, uint8_t type);
+        void RebuildChunkMesh(int chunkX, int chunkZ);
 
         RaycastResult Raycast(const glm::vec3& origin, const glm::vec3& direction, float maxDistance);
 
