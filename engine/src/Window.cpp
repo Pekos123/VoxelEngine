@@ -22,7 +22,6 @@ namespace e
             throw std::runtime_error("Failed to create GLFW window");
         }
 
-        glfwSetFramebufferSizeCallback(window, Window::framebuffer_size_callback);
         glfwMakeContextCurrent(window);
         glfwSwapInterval(1); // Enable VSync
 
@@ -31,13 +30,16 @@ namespace e
             throw std::runtime_error("Failed to initialize GLAD");
         }
 
+        glfwSetWindowUserPointer(window, this);
+        glfwSetFramebufferSizeCallback(window, Window::framebuffer_size_callback);
+
         glEnable(GL_DEPTH_TEST);
         glEnable(GL_CULL_FACE);
         glCullFace(GL_BACK);
     }
 
     void Window::framebuffer_size_callback(GLFWwindow* window, int width, int height)
-    {
+    { 
         // Tell OpenGL the new dimensions of the window
         glViewport(0, 0, width, height);
     }
@@ -51,6 +53,7 @@ namespace e
     void Window::PollEvents()
     {
         glfwPollEvents();
+        glfwGetWindowSize(window, &width, &height);
     }
 
     void Window::SwapBuffers()

@@ -21,7 +21,10 @@ namespace e
         private:
             e::Window* window;
 
+            float lastX, lastY;
+
             bool foccused = true;
+            bool firstMouse = true;
         public:
             glm::vec3 position;
             glm::vec3 orientation = glm::vec3(0.0f, 0.0f, -1.0f);

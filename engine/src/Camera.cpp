@@ -1,5 +1,7 @@
 #include <Camera.h>
 
+#define SENSIVITY_REGULATOR 1000
+
 namespace e
 {
     Camera::Camera(glm::vec3 pos, e::Window* window)
@@ -31,20 +33,36 @@ namespace e
         double mouseX, mouseY;
         glfwGetCursorPos(window->GetGLFWwindow(), &mouseX, &mouseY);
 
-        // Calculate offset from center
-        float rotX = sensivity * (float)(mouseY - (window->GetHeight() / 2)) / window->GetHeight();
-        float rotY = sensivity * (float)(mouseX - (window->GetWidth() / 2)) / window->GetWidth();
-        // Apply rotation to orientation
-        // Note: We use raw values here because sensivity handles the scaling
-        glm::vec3 newOrientation = glm::rotate(orientation, glm::radians(-rotX * 100.0f), glm::normalize(glm::cross(orientation, up)));
-        
-        // Limit pitch to prevent flipping
+        // Initialize last positions on the very first frame
+        if (firstMouse)
+        {
+            lastX = mouseX;
+            lastY = mouseY;
+            firstMouse = false;
+        }
+
+        // Calculate how much the mouse moved since the last frame
+        float deltaX = (float)(mouseX - lastX);
+        float deltaY = (float)(mouseY - lastY);
+
+        // Update last positions for the next frame
+        lastX = mouseX;
+        lastY = mouseY;
+
+        // Apply sensitivity to the raw movement
+        float rotX = deltaY * (sensivity / SENSIVITY_REGULATOR);
+        float rotY = deltaX * (sensivity / SENSIVITY_REGULATOR);
+
+        // Rotate around the "Right" axis (cross product of orientation and up)
+        glm::vec3 right = glm::normalize(glm::cross(orientation, up));
+        glm::vec3 newOrientation = glm::rotate(orientation, glm::radians(-rotX * 100.0f), right);
+
+        // Pitch limit (prevents flipping)
         if(abs(glm::angle(newOrientation, up) - glm::radians(90.0f)) <= glm::radians(88.0f))
             orientation = newOrientation;
-            
+
+        // Rotate around the World Up axis
         orientation = glm::rotate(orientation, glm::radians(-rotY * 100.0f), up);
-        // Re-center cursor
-        glfwSetCursorPos(window->GetGLFWwindow(), (double)window->GetWidth() / 2, (double)window->GetHeight() / 2);
     }
 
     static bool foccusedAlreadyPressed = false;

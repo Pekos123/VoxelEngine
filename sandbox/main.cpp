@@ -108,7 +108,6 @@ class Sandbox : public e::Application
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
     }
-
     void DebugWindowInit()
     {
         IMGUI_CHECKVERSION();
@@ -119,14 +118,12 @@ class Sandbox : public e::Application
         ImGui_ImplGlfw_InitForOpenGL(m_Window->GetGLFWwindow(), true);
         ImGui_ImplOpenGL3_Init("#version 330");
     }
-
     void DebugWindowShutdown()
     {
         ImGui_ImplOpenGL3_Shutdown();
         ImGui_ImplGlfw_Shutdown();
         ImGui::DestroyContext();
     }
-
     void RenderCrosshair()
     {
         ImGuiViewport* viewport = ImGui::GetMainViewport();
