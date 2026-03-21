@@ -11,7 +11,7 @@ add_library(engine STATIC
     src/Texture.cpp
     src/Texture2D.cpp
     src/Player.cpp
-    src/UIBlockDisplay.cpp
+    src/ShapeUI.cpp
 
     # GLAD
     ../external/glad/src/glad.c

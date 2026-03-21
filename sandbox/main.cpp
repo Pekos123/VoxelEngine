@@ -7,7 +7,7 @@
 #include <Utils.h>
 #include <Texture.h>
 #include <Player.h>
-#include <UIBlockDisplay.h>
+#include <ShapeUI.h>
 
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
@@ -25,7 +25,7 @@ class Sandbox : public e::Application
     e::Player player;
     e::Camera camera;
     e::World* world = nullptr;
-    e::UIBlockDisplay uiBlockDisplay;
+    e::UI::Squere squere;
     // ... rest of class remains similar ...
     
     std::shared_ptr<e::Shader> objShader;
@@ -48,6 +48,7 @@ class Sandbox : public e::Application
 
     // Texture
     std::unique_ptr<e::TextureArray> texArray;
+    std::vector<std::string> textureFiles;
     int currentPlacingBlockId = e::BlocksID::GRASS;
 
     // Player
@@ -204,14 +205,12 @@ class Sandbox : public e::Application
 
         objShader = std::make_shared<e::Shader>(vSrc, fSrc);
         outlineShader = std::make_shared<e::Shader>(outlineVSrc, outlineFSrc); // Using same source for vert and frag
-        uiBlockDisplay.CompileShaders(uiVSrc, uiFSrc);
+        squere.CompileShaders(uiVSrc, uiFSrc);
     }
     void LoadTextures() 
     {
-
-
         // 1. Identify common textures we want to use
-        std::vector<std::string> textureFiles = {
+        textureFiles = {
             (e::Utils::GetRootDir() / "textures/blocks/grass_top.png").string(),
             (e::Utils::GetRootDir() / "textures/blocks/dirt.png").string(),
             (e::Utils::GetRootDir() / "textures/blocks/stone_generic.png").string(),
@@ -265,20 +264,11 @@ class Sandbox : public e::Application
     }
     void DrawUI()
     {
-        if (!texArray) return;
-    
         int width = m_Window->GetWidth();
         int height = m_Window->GetHeight();
     
-        // Pass the actual OpenGL texture handle from your texArray
-        // and move the Y position to 100 pixels from the bottom
-        uiBlockDisplay.DrawBlockIcon(
-           texArray->GetID(),      // The OpenGL handle (uint32_t)
-           currentPlacingBlockId,  // The block index (int)
-           {width / 2 - 50, height - 120}, // Position (Bottom center-ish)
-           100.0f,                 // Size (100x100 pixels)
-           width, height
-        );
+        squere.pos = {width / 2 - (squere.size.x/2), height - 150}; 
+        squere.Draw(width, height);
     }
     void DrawWorld()
     {
@@ -370,16 +360,19 @@ class Sandbox : public e::Application
         {
             // Now you can access non-static variables!
             instance->currentPlacingBlockId += (int)yoffset;
+            int firstBlock = e::BlocksID::GRASS;
+            int lastBlock = e::BlocksID::SANDSTONE;
 
             // Wrap around logic
-            if (instance->currentPlacingBlockId > 8) instance->currentPlacingBlockId = 1;
-            if (instance->currentPlacingBlockId < 1) instance->currentPlacingBlockId = 8;
+            if (instance->currentPlacingBlockId > lastBlock) instance->currentPlacingBlockId = firstBlock;
+            if (instance->currentPlacingBlockId < firstBlock) instance->currentPlacingBlockId = lastBlock;
         }
+        instance->squere.SetTexture(instance->textureFiles[instance->currentPlacingBlockId-1]);
     }   
     // INPUTS END
 public:
     Sandbox(const std::string& savePath) 
-        : player({ 8.0f, 80.0f, 40.0f }), camera({ 8.0f, 80.0f, 40.0f }, m_Window.get()), uiBlockDisplay()
+        : player({ 8.0f, 80.0f, 40.0f }), camera({ 8.0f, 80.0f, 40.0f }, m_Window.get()), squere({80, 80})
     {
         world = new e::World(55555, savePath); // seed and save path
         
@@ -387,6 +380,8 @@ public:
         LoadTextures();
         LoadShaders();
         SetupOutlineBuffer();
+
+        squere.SetTexture(textureFiles[currentPlacingBlockId-1]);
 
         glfwSetWindowUserPointer(m_Window->GetGLFWwindow(), this);
         glfwSetScrollCallback(m_Window->GetGLFWwindow(), scroll_callback);
