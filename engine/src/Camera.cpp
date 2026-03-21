@@ -63,6 +63,15 @@ namespace e
 
         // Rotate around the World Up axis
         orientation = glm::rotate(orientation, glm::radians(-rotY * 100.0f), up);
+
+        int width = window->GetWidth();
+        int height = window->GetHeight();
+
+        // Cursor MUST be locked in the middle
+        glfwSetCursorPos(window->GetGLFWwindow(), (double)width / 2, (double)height / 2);
+        
+        lastX = (double)width / 2;
+        lastY = (double)height / 2;
     }
 
     static bool foccusedAlreadyPressed = false;

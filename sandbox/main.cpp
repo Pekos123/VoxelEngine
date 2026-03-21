@@ -74,7 +74,7 @@ class Sandbox : public e::Application
                 ImGui::ColorEdit3("Outline Color", glm::value_ptr(outlineColor));
                 ImGui::DragFloat("Outline Thickness", &outlineThickness, 0.1f, 0.1f, 5.0f);
                 ImGui::DragInt("Block Id", &currentPlacingBlockId, 1, e::BlocksID::GRASS, e::BlocksID::SANDSTONE);
-                ImGui::DragFloat3("SunPos: ", glm::value_ptr(sunPos), 0.05f, 0.0f, 1.f);
+                ImGui::DragFloat3("SunPos: ", glm::value_ptr(sunPos), 0.05f, -1.0f, 1.f);
                 if(ImGui::Button("Recompile shaders", {150, 30}))
                     LoadShaders();
             ImGui::End();
