@@ -1,6 +1,9 @@
 #include <Camera.h>
 
-#define SENSIVITY_REGULATOR 1000
+constexpr float MOUSE_ROTATION_SCALER = .1f; 
+constexpr float MAX_NO_CLIP_ANGLE = 88.f;
+constexpr float DEFAULT_SPEED = 40.0f;
+constexpr float SPRINT_SPEED = 120.0f;
 
 namespace e
 {
@@ -13,7 +16,6 @@ namespace e
     void Camera::Matrix(float FOV, float near, float far, e::Shader& shader, const char* uniform)
     {
         glm::mat4 view = glm::lookAt(position, position + orientation, up);
-        // Fix: Use float division for aspect ratio
         glm::mat4 proj = glm::perspective(glm::radians(FOV), (float)window->GetWidth() / (float)window->GetHeight(), near, far);
         glm::mat4 mvp = proj * view;
 
@@ -49,29 +51,34 @@ namespace e
         lastX = mouseX;
         lastY = mouseY;
 
-        // Apply sensitivity to the raw movement
-        float rotX = deltaY * (sensivity / SENSIVITY_REGULATOR);
-        float rotY = deltaX * (sensivity / SENSIVITY_REGULATOR);
+        // Apply sensitivity 
+        float rotX = deltaY * sensitivity;
+        float rotY = deltaX * sensitivity;
 
-        // Rotate around the "Right" axis (cross product of orientation and up)
         glm::vec3 right = glm::normalize(glm::cross(orientation, up));
-        glm::vec3 newOrientation = glm::rotate(orientation, glm::radians(-rotX * 100.0f), right);
+        
+        // Named variable replaces 100.0f
+        float pitchAngle = glm::radians(-rotX * MOUSE_ROTATION_SCALER);
+        glm::vec3 newOrientation = glm::rotate(orientation, pitchAngle, right);
 
         // Pitch limit (prevents flipping)
-        if(abs(glm::angle(newOrientation, up) - glm::radians(90.0f)) <= glm::radians(88.0f))
+        float currentPitchFromUp = glm::angle(newOrientation, up);
+        if(abs(currentPitchFromUp - glm::radians(90.0f)) <= glm::radians(MAX_NO_CLIP_ANGLE))
+        {
             orientation = newOrientation;
+        }
 
-        // Rotate around the World Up axis
-        orientation = glm::rotate(orientation, glm::radians(-rotY * 100.0f), up);
+        // Named variable replaces 100.0f
+        float yawAngle = glm::radians(-rotY * MOUSE_ROTATION_SCALER);
+        orientation = glm::rotate(orientation, yawAngle, up);
 
         int width = window->GetWidth();
         int height = window->GetHeight();
 
-        // Cursor MUST be locked in the middle
-        glfwSetCursorPos(window->GetGLFWwindow(), (double)width / 2, (double)height / 2);
+        glfwSetCursorPos(window->GetGLFWwindow(), (double)width / 2.0, (double)height / 2.0);
         
-        lastX = (double)width / 2;
-        lastY = (double)height / 2;
+        lastX = (double)width / 2.0;
+        lastY = (double)height / 2.0;
     }
 
     static bool foccusedAlreadyPressed = false;
@@ -79,43 +86,43 @@ namespace e
     {
         if(glfwGetKey(window->GetGLFWwindow(), GLFW_KEY_ESCAPE) == GLFW_PRESS && !foccusedAlreadyPressed)
         {
-
             foccusedAlreadyPressed = true;
             foccused = !foccused;
             if(foccused)
                 glfwSetInputMode(window->GetGLFWwindow(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
             else
                 glfwSetInputMode(window->GetGLFWwindow(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-        
         }
         else if(glfwGetKey(window->GetGLFWwindow(), GLFW_KEY_ESCAPE) == GLFW_RELEASE && foccusedAlreadyPressed) foccusedAlreadyPressed = false;
         
         if(!foccused) return; 
 
-        // Speed boost
+        // Named constants for movement speeds
         if(glfwGetKey(window->GetGLFWwindow(), GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
-            speed = 120.0f;
+            speed = SPRINT_SPEED;
         else
-            speed = 40.0f;
+            speed = DEFAULT_SPEED;
 
-        // Mouse movement
+        // MouseMovement
         Camera::MouseMovement();
     }
 
     void Camera::CameraMovement()
     {
+        // Directional vectors
+        glm::vec3 right = glm::normalize(glm::cross(orientation, up));
+
         if(glfwGetKey(window->GetGLFWwindow(), GLFW_KEY_W) == GLFW_PRESS)
             position += speed * orientation * Renderer::deltaTime;
         if(glfwGetKey(window->GetGLFWwindow(), GLFW_KEY_S) == GLFW_PRESS)
             position += speed * -orientation * Renderer::deltaTime;
         if(glfwGetKey(window->GetGLFWwindow(), GLFW_KEY_A) == GLFW_PRESS)
-            position += speed * -glm::normalize(glm::cross(orientation, up)) * Renderer::deltaTime;
+            position += speed * -right * Renderer::deltaTime;
         if(glfwGetKey(window->GetGLFWwindow(), GLFW_KEY_D) == GLFW_PRESS)
-            position += speed * glm::normalize(glm::cross(orientation, up)) * Renderer::deltaTime;
+            position += speed * right * Renderer::deltaTime;
         if (glfwGetKey(window->GetGLFWwindow(), GLFW_KEY_SPACE) == GLFW_PRESS)
-		    position += speed * up * Renderer::deltaTime;
-	    if (glfwGetKey(window->GetGLFWwindow(), GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS)
-		    position += speed * -up * Renderer::deltaTime;
+            position += speed * up * Renderer::deltaTime;
+        if (glfwGetKey(window->GetGLFWwindow(), GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS)
+            position += speed * -up * Renderer::deltaTime;
     }
 }
-

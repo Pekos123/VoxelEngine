@@ -81,7 +81,7 @@ class Sandbox : public e::Application
 
 
             ImGui::Begin("Player");
-                ImGui::InputFloat("Sensivity", &camera.sensivity, 0.1f, 0.5f);
+                ImGui::InputFloat("Sensivity", &camera.sensitivity, 0.1f, 0.5f);
                 ImGui::InputFloat("Camera Speed", &camera.speed, 0.1f);
                 ImGui::SliderFloat("Render Distance", &renderDistance, 32.0f, 800.0f);
                 ImGui::DragFloat("Fov", &fov, 0.1f, 20.f, 120.f);

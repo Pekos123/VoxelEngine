@@ -31,7 +31,7 @@ namespace e
             glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
 
             float speed = 0.1f;
-            float sensivity = 1.0f;
+            float sensitivity = 1.0f;
 
             Camera(glm::vec3 pos, e::Window* window);
 
