@@ -6,6 +6,7 @@
 #include <World.h>
 #include <Utils.h>
 #include <Texture.h>
+#include <ShadowMap.h>
 #include <Player.h>
 #include <ShapeUI.h>
 
@@ -31,6 +32,9 @@ class Sandbox : public e::Application
     std::shared_ptr<e::Shader> objShader;
     std::shared_ptr<e::Shader> outlineShader;
     std::shared_ptr<e::Shader> uiShader;
+    std::shared_ptr<e::Shader> shadowShader;
+
+    std::unique_ptr<e::ShadowMap> shadowMap;
 
     glm::vec3 lightPos = { 10.0f, 20.0f, 10.0f };
     glm::vec3 objectColor = { 1.f, 1.f, 1.0f }; // White bc of textures
@@ -191,6 +195,11 @@ class Sandbox : public e::Application
         std::string uiFSrc = e::Utils::ReadFile(uiFPath);
         std::string uiVSrc = e::Utils::ReadFile(uiVPath); // Using same source for vert and frag
 
+        std::string shadowVPath = (e::Utils::GetRootDir() / "engine/shaders/shadow/shadow.vert").string();
+        std::string shadowFPath = (e::Utils::GetRootDir() / "engine/shaders/shadow/shadow.frag").string();
+        std::string shadowVSrc = e::Utils::ReadFile(shadowVPath);
+        std::string shadowFSrc = e::Utils::ReadFile(shadowFPath);
+
         if (vSrc.empty() || fSrc.empty()) {
             std::cerr << "CRITICAL: Shader source is empty!" << std::endl;
             return;
@@ -202,6 +211,7 @@ class Sandbox : public e::Application
 
         objShader = std::make_shared<e::Shader>(vSrc, fSrc);
         outlineShader = std::make_shared<e::Shader>(outlineVSrc, outlineFSrc); // Using same source for vert and frag
+        shadowShader = std::make_shared<e::Shader>(shadowVSrc, shadowFSrc);
         squere.CompileShaders(uiVSrc, uiFSrc);
     }
     void LoadTextures() 
@@ -269,11 +279,25 @@ class Sandbox : public e::Application
     }
     void DrawWorld()
     {
-        if (objShader) {
+        if (objShader && shadowShader) {
+            // 1. Shadow Pass
+            glm::mat4 lightSpaceMatrix = shadowMap->GetLightSpaceMatrix(sunPos, camera.position);
+            shadowShader->Bind();
+            shadowShader->SetUniformMat4("u_LightSpaceMatrix", lightSpaceMatrix);
+            
+            shadowMap->Bind();
+            world->DrawShadows(shadowShader, camera.position, renderDistance);
+            shadowMap->Unbind();
+
+            // Reset viewport to window size
+            glViewport(0, 0, m_Window->GetWidth(), m_Window->GetHeight());
+
+            // 2. Main Pass
             objShader->Bind();
             
             glm::mat4 viewProj = camera.GetViewProjectionMatrix(fov, 0.1f, 1000.0f);
             objShader->SetUniformMat4("u_ViewProj", viewProj);
+            objShader->SetUniformMat4("u_LightSpaceMatrix", lightSpaceMatrix);
 
             objShader->SetUniformFloat3("lightPos", lightPos);
             objShader->SetUniformFloat3("sunPos", sunPos);
@@ -285,6 +309,9 @@ class Sandbox : public e::Application
                 texArray->Bind(0);
                 objShader->SetUniformInt("u_Textures", 0);
             }
+
+            shadowMap->BindTexture(1);
+            objShader->SetUniformInt("u_ShadowMap", 1);
 
             world->Draw(objShader, camera.position, camera.orientation, renderDistance);
             DrawOutline(viewProj);
@@ -372,6 +399,7 @@ public:
         : player({ 8.0f, 80.0f, 40.0f }), camera({ 8.0f, 80.0f, 40.0f }, m_Window.get()), squere({80, 80})
     {
         world = new e::World(55555, savePath); // seed and save path
+        shadowMap = std::make_unique<e::ShadowMap>(2048);
         
         DebugWindowInit();   
         LoadTextures();

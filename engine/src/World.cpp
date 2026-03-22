@@ -416,6 +416,25 @@ namespace e
             }
         }
     }
+
+    void World::DrawShadows(const std::shared_ptr<Shader>& shadowShader, const glm::vec3& cameraPos, float renderDistance)
+    {
+        float renderDistSq = renderDistance * renderDistance;
+
+        for (auto& pair : chunks) {
+            Chunk& chunk = pair.second;
+
+            glm::vec3 chunkCenter = glm::vec3(chunk.position.x + CHUNK_SIZE / 2.0f, CHUNK_HEIGHT / 2.0f, chunk.position.z + CHUNK_SIZE / 2.0f);
+            float distSq = glm::dot(cameraPos - chunkCenter, cameraPos - cameraPos); // Simple distance check for shadows
+
+            // We don't do frustum culling for shadows because chunks outside view might still cast shadows into view
+            if (chunk.vertexCount > 0) {
+                shadowShader->SetUniformFloat3("u_ChunkPos", glm::vec3(chunk.position));
+                Renderer::Draw(chunk.vao, (uint32_t)chunk.vertexCount);
+            }
+        }
+    }
+
     void World::AddTree(int x, int y, int z)
     {
         std::unordered_set<Chunk*> chunksAffected; // for chunks that tree is growing on

@@ -3,11 +3,13 @@ layout (location = 0) in uint a_Data; // All data packed into one 32-bit int
 
 out vec3 Normal;
 out vec3 FragPos;
+out vec4 vFragPosLightSpace;
 out float vAO;
 out vec2 vTexCoord;
 flat out uint vTextureID;
 
 uniform mat4 u_ViewProj;
+uniform mat4 u_LightSpaceMatrix;
 uniform vec3 u_ChunkPos; // Pass the chunk's world position (e.g., 16, 0, 32)
 
 void main()
@@ -34,7 +36,7 @@ void main()
     uint blockID = (a_Data >> 25u) & 0x7Fu;
 
     vAO = float(ao) / 3.0;
-    vTextureID = blockID - 1u; // Adjust if blockID 1 is the first texture (index 0)
+    vTextureID = blockID - 1u;
 
     vec3 normals[6] = vec3[](
         vec3(0, 1, 0),  // TOP
@@ -74,6 +76,8 @@ void main()
     // Calculate Positions
     vec3 localPos = vec3(float(x), float(y), float(z)) + vOffsets[normalID * 4u + vIdx];
     FragPos = u_ChunkPos + localPos; 
+    vFragPosLightSpace = u_LightSpaceMatrix * vec4(FragPos, 1.0);
     
     gl_Position = u_ViewProj * vec4(FragPos, 1.0);
 }
+
