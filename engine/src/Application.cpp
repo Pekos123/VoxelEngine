@@ -5,7 +5,7 @@ namespace e
 {
     Application::Application()
     {
-        m_Window = std::make_unique<Window>(1280, 720, "Game Engine");
+        m_Window = std::make_shared<Window>(1280, 720, "Game Engine");
     }
 
     Application::~Application()

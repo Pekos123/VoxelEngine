@@ -18,7 +18,7 @@ namespace e
         void OnWindowUpdate() { m_Window->PollEvents(); m_Window->SwapBuffers(); }
 
     protected:
-        std::unique_ptr<Window> m_Window;
+        std::shared_ptr<Window> m_Window;
         bool m_Running = true;
     };
 

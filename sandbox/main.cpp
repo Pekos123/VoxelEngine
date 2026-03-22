@@ -9,6 +9,7 @@
 #include <ShadowMap.h>
 #include <Player.h>
 #include <ShapeUI.h>
+#include <Scene.h>
 
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
@@ -21,11 +22,12 @@
 #include <filesystem>
 #include <iostream>
 
-class Sandbox : public e::Application
+class Game : public e::Scene
 {
     e::Player player;
     e::Camera camera;
     e::World* world = nullptr;
+    std::shared_ptr<e::Window> window;
     e::UI::Squere squere;
     // ... rest of class remains similar ...
     
@@ -119,7 +121,7 @@ class Sandbox : public e::Application
         ImGuiIO& io = ImGui::GetIO(); (void)io;
         ImGui::StyleColorsDark();
         
-        ImGui_ImplGlfw_InitForOpenGL(m_Window->GetGLFWwindow(), true);
+        ImGui_ImplGlfw_InitForOpenGL(window->GetGLFWwindow(), true);
         ImGui_ImplOpenGL3_Init("#version 330");
     }
     void DebugWindowShutdown()
@@ -271,8 +273,8 @@ class Sandbox : public e::Application
     }
     void DrawUI()
     {
-        int width = m_Window->GetWidth();
-        int height = m_Window->GetHeight();
+        int width = window->GetWidth();
+        int height = window->GetHeight();
     
         squere.pos = {width / 2 - (squere.size.x/2), height - 150}; 
         squere.Draw(width, height);
@@ -290,7 +292,7 @@ class Sandbox : public e::Application
             shadowMap->Unbind();
 
             // Reset viewport to window size
-            glViewport(0, 0, m_Window->GetWidth(), m_Window->GetHeight());
+            glViewport(0, 0, window->GetWidth(), window->GetHeight());
 
             // 2. Main Pass
             objShader->Bind();
@@ -325,7 +327,7 @@ class Sandbox : public e::Application
         if (ImGui::GetIO().WantCaptureMouse) return;
 
         // Left Click: Remove Block
-        if(glfwGetMouseButton(m_Window->GetGLFWwindow(), GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
+        if(glfwGetMouseButton(window->GetGLFWwindow(), GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
         {
             if (!leftMouseDown) {
                 e::RaycastResult result = world->Raycast(camera.position, camera.orientation, 10.0f);
@@ -339,7 +341,7 @@ class Sandbox : public e::Application
         }
 
         // Right Click: Place Block
-        if(glfwGetMouseButton(m_Window->GetGLFWwindow(), GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS)
+        if(glfwGetMouseButton(window->GetGLFWwindow(), GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS)
         {
             if (!rightMouseDown) {
                 e::RaycastResult result = world->Raycast(camera.position, camera.orientation, 10.0f);
@@ -371,13 +373,13 @@ class Sandbox : public e::Application
             player.Update(e::Renderer::deltaTime, *world);
             // Sync camera to player eye level
             camera.position = player.position + glm::vec3(0.0f, 1.7f, 0.0f);
-            player.HandleInput(m_Window->GetGLFWwindow(), camera.orientation);
+            player.HandleInput(window->GetGLFWwindow(), camera.orientation);
         }
     }
     static void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
     {
         // 1. Get the pointer back from GLFW
-        Sandbox* instance = static_cast<Sandbox*>(glfwGetWindowUserPointer(window));
+        Game* instance = static_cast<Game*>(glfwGetWindowUserPointer(window));
 
         // 2. Safety check and logic
         if (instance) 
@@ -395,8 +397,8 @@ class Sandbox : public e::Application
     }   
     // INPUTS END
 public:
-    Sandbox(const std::string& savePath) 
-        : player({ 8.0f, 80.0f, 40.0f }), camera({ 8.0f, 80.0f, 40.0f }, m_Window.get()), squere({80, 80})
+    Game(const std::string& savePath, std::shared_ptr<e::Window> window) 
+        : player({ 8.0f, 80.0f, 40.0f }), camera({ 8.0f, 80.0f, 40.0f }, window.get()), squere({80, 80}), window(window)
     {
         world = new e::World(55555, savePath); // seed and save path
         shadowMap = std::make_unique<e::ShadowMap>(2048);
@@ -408,21 +410,21 @@ public:
 
         squere.SetTexture(textureFiles[currentPlacingBlockId-1]);
 
-        glfwSetWindowUserPointer(m_Window->GetGLFWwindow(), this);
-        glfwSetScrollCallback(m_Window->GetGLFWwindow(), scroll_callback);
+        glfwSetWindowUserPointer(window->GetGLFWwindow(), this);
+        glfwSetScrollCallback(window->GetGLFWwindow(), scroll_callback);
 
         // We don't need LoadFromFile anymore as LoadChunk handles it
         world->GenerateWorld(5); 
     }
 
-    ~Sandbox()
+    ~Game()
     {
         world->UnloadAllChunks();
         delete world;
         DebugWindowShutdown();
     }
 
-    void OnUpdate() override
+    void Update() override
     {
         // Update graphyics
         e::Renderer::SetClearColor({ skyColor, 1.0f });
@@ -442,6 +444,62 @@ public:
         PlayerMovement();
 
         DebugWindowRender(); // At the end to be on top of eveything else
+    }
+};
+class MainMenu : public e::Scene
+{
+    std::shared_ptr<e::Window> window;
+
+    glm::vec3 backgroundColor = {.8f, .8f, .8f};
+
+    glm::ivec2 squereSize = {380, 120};
+    e::UI::Squere squere;
+
+    void LoadShaders()
+    {
+        std::string uiVPath = (e::Utils::GetRootDir() / "engine/shaders/ui/ui.vert").string();
+        std::string uiFPath = (e::Utils::GetRootDir() / "engine/shaders/ui/ui.frag").string();
+        std::string uiFSrc = e::Utils::ReadFile(uiFPath);
+        std::string uiVSrc = e::Utils::ReadFile(uiVPath); // Using same source for vert and frag
+
+        squere.CompileShaders(uiVSrc, uiFSrc);
+    }
+
+    void DrawUI()
+    {
+        int width = window->GetWidth();
+        int height = window->GetHeight();
+
+        squere.pos = {width/2 - (squere.size.x / 2), height/2 - (squere.size.y)};
+        squere.Draw(width, height);
+    }
+public:
+    MainMenu(std::shared_ptr<e::Window> window) : squere(squereSize), window(window)
+    {
+        LoadShaders();
+        squere.pos = {100, 100};
+    }
+    void Update() override
+    {
+        e::Renderer::SetClearColor({backgroundColor, 1.0f});
+        e::Renderer::Clear();
+
+        DrawUI();
+    }
+};
+class Sandbox : public e::Application
+{
+    std::unique_ptr<e::Scene> currScene;
+public:
+    Sandbox(const std::string& savePath) 
+    {
+        //currScene = std::make_unique<Game>(savePath, m_Window);
+        currScene = std::make_unique<MainMenu>(m_Window);
+    }
+
+    void OnUpdate() override
+    {
+        currScene->Update();
     }
 };
 

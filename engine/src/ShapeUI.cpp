@@ -1,4 +1,5 @@
 #include <ShapeUI.h>
+#include <iostream>
 
 using namespace e::UI;
 
@@ -49,6 +50,11 @@ void Squere::BindBuffers()
 }
 void Squere::Draw(int screenWidth, int screenHeight)
 {
+    if(!m_Shader)
+    {
+        std::cout << "NO SHADER APPLIED TO e::UI::Shape\n";
+        return;
+    }
     // --- Bulletproof State Management ---
     glDisable(GL_DEPTH_TEST);
     glDisable(GL_CULL_FACE); // <--- IMPORTANT: Prevents the square from vanishing if winding is wrong
