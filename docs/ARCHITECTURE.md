@@ -28,11 +28,15 @@ The `e::Player` class handles movement and collision detection:
 ### `e::Renderer`
 A static class responsible for global rendering state and execution.
 
-### Texture Management
-- **`e::TextureArray`**: Used for block textures to enable efficient batching. Shaders use a `layer` index to select the correct texture from the array, avoiding frequent texture swaps.
-- **`e::Texture2D`**: Used for standard single-image textures (e.g., UI elements).
+### Shadow Mapping
+- **`e::ShadowMap`**: Manages a depth framebuffer and texture for directional light (sun).
+- **PCF (Percentage Closer Filtering)**: The fragment shader implements 3x3 PCF to soften shadow edges.
+- **Front-Face Culling**: During the shadow pass, front faces are culled to minimize shadow acne and light leaking.
 
-### Abstraction Layer
+### Texture Management
+- **`e::TextureArray`**: Used for block textures to enable efficient batching. Shaders use a `layer` index to select the correct texture from the array.
+- **`e::Texture2D`**: Used for standard single-image textures (e.g., UI elements).
+- **Global Textures**: Block and crop textures are located in the root `/textures` directory for project-wide accessibility.
 The engine wraps low-level OpenGL objects into clean C++ classes:
 - **`Buffer`**: Wraps `VBO` (Vertex Buffer Object) and `EBO` (Element Buffer Object).
 - **`VertexArray`**: Wraps `VAO` (Vertex Array Object).
