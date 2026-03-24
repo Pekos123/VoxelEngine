@@ -6,11 +6,14 @@ out vec3 FragPos;
 out vec4 vFragPosLightSpace;
 out float vAO;
 out vec2 vTexCoord;
+out float vDistance;
 flat out uint vTextureID;
 
 uniform mat4 u_ViewProj;
+uniform mat4 u_View;
 uniform mat4 u_LightSpaceMatrix;
 uniform vec3 u_ChunkPos; // Pass the chunk's world position (e.g., 16, 0, 32)
+uniform vec3 viewPos;
 
 void main()
 {
@@ -76,8 +79,9 @@ void main()
     // Calculate Positions
     vec3 localPos = vec3(float(x), float(y), float(z)) + vOffsets[normalID * 4u + vIdx];
     FragPos = u_ChunkPos + localPos; 
+    vDistance = distance(FragPos, viewPos);
+
     vFragPosLightSpace = u_LightSpaceMatrix * vec4(FragPos, 1.0);
-    
     gl_Position = u_ViewProj * vec4(FragPos, 1.0);
 }
 

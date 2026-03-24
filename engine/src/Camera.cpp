@@ -29,6 +29,10 @@ namespace e
         glm::mat4 proj = glm::perspective(glm::radians(FOV), (float)m_Window->GetWidth() / (float)m_Window->GetHeight(), near, far);
         return proj * view;
     }
+    glm::mat4 Camera::GetViewMatrix(float FOV, float near, float far)
+    {
+        return glm::perspective(glm::radians(FOV), (float)m_Window->GetWidth() / (float)m_Window->GetHeight(), near, far);
+    }
 
     void Camera::MouseMovement()
     {

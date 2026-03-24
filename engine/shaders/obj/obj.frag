@@ -7,6 +7,7 @@ in vec3 FragPos;
 in vec4 vFragPosLightSpace;
 in float vAO;
 in vec2 vTexCoord;
+in float vDistance;
 flat in uint vTextureID;
 
 uniform sampler2DArray u_Textures;
@@ -16,6 +17,9 @@ uniform vec3 lightPos;
 uniform vec3 viewPos;  
 uniform vec3 lightColor;
 uniform vec3 objectColor;
+uniform float fogStart;
+uniform float fogEnd;
+uniform vec3 fogColor;
 
 uniform vec3 sunPos;
 
@@ -95,5 +99,12 @@ void main() {
     float aoFactor = mix(0.4, 1.0, vAO); 
     result *= aoFactor;
 
-    FragColor = vec4(result, 1.0);
+    // --- 7. APPLY FOG ---
+    // no-fog: 0.0, full-fog: 1.0
+    float fogFactor = clamp((vDistance - fogStart) / (fogEnd - fogStart), 0.0, 1.0);
+    
+    // mixing results with our fog
+    vec3 finalColor = mix(result, fogColor, fogFactor);
+
+    FragColor = vec4(finalColor, 1.0);
 }

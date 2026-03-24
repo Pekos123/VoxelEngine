@@ -53,7 +53,6 @@ namespace e
         GenerateTerrain(gen);
         if(!tressGenerated) GenerateTrees(gen, world); // there is bug, even tho tress are generated its stil genarte like this bool dont hcnage at all
     }
-
     void Chunk::GenerateMesh(World* world) {
         // pack this
         std::vector<uint32_t> vertices;

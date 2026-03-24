@@ -266,9 +266,17 @@ void Game::DrawWorld()
         objShader->Bind();
         
         glm::mat4 viewProj = camera.GetViewProjectionMatrix(fov, 0.1f, 1000.0f);
+        objShader->SetUniformMat4("u_View", camera.GetViewMatrix(fov, 0.1f, 1000.f));
         objShader->SetUniformMat4("u_ViewProj", viewProj);
         objShader->SetUniformMat4("u_LightSpaceMatrix", lightSpaceMatrix);
 
+        float fogEnd = renderDistance * 0.8;
+        float fogStart = renderDistance * 0.5f;
+        objShader->SetUniformFloat("fogStart", fogStart);
+        objShader->SetUniformFloat("fogEnd", fogEnd);
+        objShader->SetUniformFloat3("fogColor", {0.8f, 0.8f, 0.8f});
+
+        objShader->SetUniformFloat3("viewPos", camera.position);
         objShader->SetUniformFloat3("lightPos", lightPos);
         objShader->SetUniformFloat3("sunPos", sunPos);
         objShader->SetUniformFloat3("viewPos", camera.position);

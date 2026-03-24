@@ -42,6 +42,7 @@ namespace e
             void CameraMovement();
 
             glm::mat4 GetViewProjectionMatrix(float FOV, float near, float far) const;
+            glm::mat4 GetViewMatrix(float FOV, float near, float far);
     };
 }
 
