@@ -128,7 +128,7 @@ namespace e
         void AddTree(int x, int y, int z);
 
         //Debug
-        int GetLoadedChunkCount() const { return (int)chunks.size(); }
+        int GetLoadedChunkCount() const { return (int)m_Chunks.size(); }
 
         // Helper to get block at any world coordinate
         uint8_t GetBlock(int x, int y, int z);
@@ -139,14 +139,14 @@ namespace e
 
         RaycastResult Raycast(const glm::vec3& origin, const glm::vec3& direction, float maxDistance);
 
-        World(int seed, const std::string& savePath) : gen(seed), m_SavePath(savePath) {}
+        World(int seed, const std::string& savePath) : m_Gen(seed), m_SavePath(savePath) {}
 
     private:
         void SaveChunkToDisk(const Chunk& chunk);
         void UnloadChunks(const glm::vec3& cameraPos, float renderDistance);
 
-        TerrainGenerator gen;
-        std::unordered_map<glm::ivec3, Chunk> chunks;
+        TerrainGenerator m_Gen;
+        std::unordered_map<glm::ivec3, Chunk> m_Chunks;
         std::string m_SavePath;
         float m_TimeSinceLastUnload = 0.0f;
     };

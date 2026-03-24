@@ -4,7 +4,7 @@
 namespace e
 {
     Window::Window(unsigned int width, unsigned int height, const char* title)
-        : width(width), height(height), title(title)
+        : m_Width(width), m_Height(height), m_Title(title)
     {
         if (!glfwInit())
         {
@@ -15,14 +15,14 @@ namespace e
         glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
         glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
         
-        window = glfwCreateWindow(width, height, title, nullptr, nullptr);
-        if (!window)
+        m_GLFWWindow = glfwCreateWindow(width, height, title, nullptr, nullptr);
+        if (!m_GLFWWindow)
         {
             glfwTerminate();
             throw std::runtime_error("Failed to create GLFW window");
         }
 
-        glfwMakeContextCurrent(window);
+        glfwMakeContextCurrent(m_GLFWWindow);
         glfwSwapInterval(1); // Enable VSync
 
         if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
@@ -30,8 +30,8 @@ namespace e
             throw std::runtime_error("Failed to initialize GLAD");
         }
 
-        glfwSetWindowUserPointer(window, this);
-        glfwSetFramebufferSizeCallback(window, Window::framebuffer_size_callback);
+        glfwSetWindowUserPointer(m_GLFWWindow, this);
+        glfwSetFramebufferSizeCallback(m_GLFWWindow, Window::framebuffer_size_callback);
 
         glEnable(GL_DEPTH_TEST);
         glEnable(GL_CULL_FACE);
@@ -46,25 +46,25 @@ namespace e
 
     Window::~Window()
     {
-        glfwDestroyWindow(window);
+        glfwDestroyWindow(m_GLFWWindow);
         glfwTerminate();
     }
 
     void Window::PollEvents()
     {
         glfwPollEvents();
-        glfwGetWindowSize(window, &width, &height);
+        glfwGetWindowSize(m_GLFWWindow, &m_Width, &m_Height);
     }
 
     void Window::SwapBuffers()
     {
         // This function should be implemented to swap buffers of the window
-        glfwSwapBuffers(window);
+        glfwSwapBuffers(m_GLFWWindow);
     }
     
     bool Window::ShouldClose() const
     {
         // This function should be implemented to check if the window should close
-        return glfwWindowShouldClose(window);
+        return glfwWindowShouldClose(m_GLFWWindow);
     }
 }

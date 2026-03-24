@@ -20,7 +20,7 @@ private:
 
     glm::vec3 backgroundColor = {.8f, .8f, .8f};
     glm::ivec2 squereSize = {380, 120};
-    e::UI::Squere squere;
+    e::UI::Rectangle squere;
     e::UI::Text text;
 
     void LoadShaders();

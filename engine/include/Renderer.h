@@ -14,7 +14,7 @@ namespace e
     class Renderer
     {
     private:
-        static float lastTime;
+        static float m_LastTime;
     public:
         static void Clear();
         static void SetClearColor(const glm::vec4& color);

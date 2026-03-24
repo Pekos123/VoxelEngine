@@ -11,9 +11,9 @@ namespace e
     class Window
     {
     private:
-        GLFWwindow* window;
-        int width, height;
-        const char* title;
+        GLFWwindow* m_GLFWWindow;
+        int m_Width, m_Height;
+        const char* m_Title;
 
         static void framebuffer_size_callback(GLFWwindow* window, int width, int height);
     public:
@@ -24,10 +24,10 @@ namespace e
         void SwapBuffers();
         bool ShouldClose() const;
 
-        int GetWidth() const { return width; }
-        int GetHeight() const { return height; }
+        int GetWidth() const { return m_Width; }
+        int GetHeight() const { return m_Height; }
 
-        GLFWwindow* GetGLFWwindow() const { return window; }
+        GLFWwindow* GetGLFWwindow() const { return m_GLFWWindow; }
     };
 }
 #endif // WINDOW_H

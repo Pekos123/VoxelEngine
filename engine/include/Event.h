@@ -7,13 +7,13 @@
 namespace e {
     class Event {
     private:
-        std::vector<std::function<void()>> listeners;
+        std::vector<std::function<void()>> m_Listeners;
 
     public:
         template<typename T>
         void AddListener(T* instance, void (T::*method)())
         {
-            listeners.push_back([instance, method]() {
+            m_Listeners.push_back([instance, method]() {
                 (instance->*method)();
             });
         }

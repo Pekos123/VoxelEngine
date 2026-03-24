@@ -2,21 +2,21 @@
 
 using namespace e::UI;
 
-Squere::Squere(glm::ivec2 size) : size(size)
+Rectangle::Rectangle(glm::ivec2 size) : size(size)
 {
     const std::string deafultPath = (e::Utils::GetRootDir() / "engine/textures/defaultUI.png").string();
-    txt = new Texture2D(deafultPath);
+    m_Texture = std::make_unique<Texture2D>(deafultPath);
 
     BindBuffers();
 }
-void Squere::SetTexture(const std::string& path)
+void Rectangle::SetTexture(const std::string& path)
 {   
-    txt = new Texture2D(path);
+    m_Texture = std::make_unique<Texture2D>(path);
 }
-void Squere::CompileShaders(const std::string& vertexSrc, const std::string& fragmentSrc) {
+void Rectangle::CompileShaders(const std::string& vertexSrc, const std::string& fragmentSrc) {
     m_Shader = std::make_shared<Shader>(vertexSrc, fragmentSrc);
 }
-void Squere::BindBuffers()
+void Rectangle::BindBuffers()
 {
     // --- Inside UIBlockDisplay Constructor ---
     float vertices[] = {
@@ -34,24 +34,29 @@ void Squere::BindBuffers()
         2, 3, 0 
     };
 
-    vao = std::make_shared<e::VertexArray>();
-    vao->Bind();
+    m_Vao = std::make_shared<e::VertexArray>();
+    m_Vao->Bind();
 
-    vbo = std::make_shared<e::VertexBuffer>(vertices, sizeof(vertices));
-    vbo->SetLayout({
+    m_Vbo = std::make_shared<e::VertexBuffer>(vertices, sizeof(vertices));
+    m_Vbo->SetLayout({
         { e::ShaderDataType::Float2, "aPos" },
         { e::ShaderDataType::Float2, "aTexCoord" }
     });
 
-    ibo = std::make_shared<e::IndexBuffer>(indices, sizeof(indices) / sizeof(unsigned));
-    vao->AddVertexBuffer(vbo);
-    vao->SetIndexBuffer(ibo);
+    m_Ibo = std::make_shared<e::IndexBuffer>(indices, sizeof(indices) / sizeof(unsigned));
+    m_Vao->AddVertexBuffer(m_Vbo);
+    m_Vao->SetIndexBuffer(m_Ibo);
 }
-void Squere::Draw(int screenWidth, int screenHeight)
+void Rectangle::Draw(int screenWidth, int screenHeight)
 {
     if(!m_Shader)
     {
         std::cout << "NO SHADER APPLIED TO e::UI::Shape\n";
+        return;
+    }
+    if(!m_Texture)
+    {
+        std::cout << "NO TEXTURE APPLIED TO e::UI::Shape\n";
         return;
     }
     // --- Bulletproof State Management ---
@@ -63,7 +68,7 @@ void Squere::Draw(int screenWidth, int screenHeight)
     // shader binding
     m_Shader->Bind();
     // texture binding
-    txt->Bind();
+    m_Texture->Bind();
     // setting up uniforms
     m_Shader->SetUniformInt("u_Texture", 0);
     // ortographic
@@ -76,7 +81,7 @@ void Squere::Draw(int screenWidth, int screenHeight)
     m_Shader->SetUniformMat4("u_Model", model);
 
     // Draw Call
-    Renderer::DrawIndexed(vao);
+    Renderer::DrawIndexed(m_Vao);
 
     // --- Reset State ---
     glEnable(GL_DEPTH_TEST);
@@ -85,27 +90,27 @@ void Squere::Draw(int screenWidth, int screenHeight)
 }
 Text::Text()
 {
-    vao = std::make_shared<e::VertexArray>();
-    vbo = std::make_shared<e::VertexBuffer>(nullptr, sizeof(float) * 6 * 4);
-    vbo->SetLayout({
+    m_Vao = std::make_shared<e::VertexArray>();
+    m_Vbo = std::make_shared<e::VertexBuffer>(nullptr, sizeof(float) * 6 * 4);
+    m_Vbo->SetLayout({
         { e::ShaderDataType::Float4, "aPosTex" }
     });
-    vao->AddVertexBuffer(vbo);
+    m_Vao->AddVertexBuffer(m_Vbo);
 }
 void Text::CompileShaders(const std::string& vertexSrc, const std::string& fragmentSrc) 
 {
-    shader = new Shader(vertexSrc, fragmentSrc);
+    m_Shader = std::make_unique<Shader>(vertexSrc, fragmentSrc);
 }
 void Text::Draw(int screenWidth, int screenHeight)
 {
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     
-    shader->Bind();
-    shader->SetUniformFloat3("textColor", {color});
+    m_Shader->Bind();
+    m_Shader->SetUniformFloat3("textColor", {color});
 
     glm::mat4 projection = glm::ortho(0.0f, (float)screenWidth, 0.0f, (float)screenHeight);
-    shader->SetUniformMat4("projection", projection);
+    m_Shader->SetUniformMat4("projection", projection);
 
     glActiveTexture(GL_TEXTURE0);
 
@@ -114,7 +119,7 @@ void Text::Draw(int screenWidth, int screenHeight)
     int posx = pos.x; // we create duplicate of pos.x so it wont change orginal varible 
     for (c = text.begin(); c != text.end(); c++)
     {
-        Character ch = Characters[*c];
+        Character ch = m_Characters[*c];
 
         float xpos = posx + ch.Bearing.x * scale;
         float ypos = pos.y - (ch.Size.y - ch.Bearing.y) * scale;
@@ -135,10 +140,10 @@ void Text::Draw(int screenWidth, int screenHeight)
         glBindTexture(GL_TEXTURE_2D, ch.TextureID);
         
         // update content of VBO memory
-        vbo->SetData(vertices, sizeof(vertices));
+        m_Vbo->SetData(vertices, sizeof(vertices));
 
         // render quad
-        Renderer::Draw(vao, 6);
+        Renderer::Draw(m_Vao, 6);
         
         // now advance cursors for next glyph (note that advance is number of 1/64 pixels)
         posx += (ch.Advance >> 6) * scale; // bitshift by 6 to get value in pixels (2^6 = 64)
@@ -184,7 +189,7 @@ void Text::LoadFont(const std::string& fontPath, unsigned int fontSize) {
             glm::ivec2(face->glyph->bitmap_left, face->glyph->bitmap_top),
             (unsigned int)face->glyph->advance.x
         };
-        Characters.insert(std::pair<char, Character>(c, character));
+        m_Characters.insert(std::pair<char, Character>(c, character));
     }
     FT_Done_Face(face);
     FT_Done_FreeType(ft);

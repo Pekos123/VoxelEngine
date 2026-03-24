@@ -7,8 +7,8 @@ constexpr float SPRINT_SPEED = 120.0f;
 
 namespace e
 {
-    Camera::Camera(glm::vec3 pos, e::Window* window)
-        : position(pos), window(window)
+    Camera::Camera(glm::vec3 pos, std::shared_ptr<e::Window> window)
+        : position(pos), m_Window(window)
     {
         glfwSetInputMode(window->GetGLFWwindow(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     }
@@ -16,7 +16,7 @@ namespace e
     void Camera::Matrix(float FOV, float near, float far, e::Shader& shader, const char* uniform)
     {
         glm::mat4 view = glm::lookAt(position, position + orientation, up);
-        glm::mat4 proj = glm::perspective(glm::radians(FOV), (float)window->GetWidth() / (float)window->GetHeight(), near, far);
+        glm::mat4 proj = glm::perspective(glm::radians(FOV), (float)m_Window->GetWidth() / (float)m_Window->GetHeight(), near, far);
         glm::mat4 mvp = proj * view;
 
         shader.Bind();
@@ -26,30 +26,30 @@ namespace e
     glm::mat4 Camera::GetViewProjectionMatrix(float FOV, float near, float far) const
     {
         glm::mat4 view = glm::lookAt(position, position + orientation, up);
-        glm::mat4 proj = glm::perspective(glm::radians(FOV), (float)window->GetWidth() / (float)window->GetHeight(), near, far);
+        glm::mat4 proj = glm::perspective(glm::radians(FOV), (float)m_Window->GetWidth() / (float)m_Window->GetHeight(), near, far);
         return proj * view;
     }
 
     void Camera::MouseMovement()
     {
         double mouseX, mouseY;
-        glfwGetCursorPos(window->GetGLFWwindow(), &mouseX, &mouseY);
+        glfwGetCursorPos(m_Window->GetGLFWwindow(), &mouseX, &mouseY);
 
         // Initialize last positions on the very first frame
-        if (firstMouse)
+        if (m_FirstMouse)
         {
-            lastX = mouseX;
-            lastY = mouseY;
-            firstMouse = false;
+            m_lastX = mouseX;
+            m_lastY = mouseY;
+            m_FirstMouse = false;
         }
 
         // Calculate how much the mouse moved since the last frame
-        float deltaX = (float)(mouseX - lastX);
-        float deltaY = (float)(mouseY - lastY);
+        float deltaX = (float)(mouseX - m_lastX);
+        float deltaY = (float)(mouseY - m_lastY);
 
         // Update last positions for the next frame
-        lastX = mouseX;
-        lastY = mouseY;
+        m_lastX = mouseX;
+        m_lastY = mouseY;
 
         // Apply sensitivity 
         float rotX = deltaY * sensitivity;
@@ -72,33 +72,33 @@ namespace e
         float yawAngle = glm::radians(-rotY * MOUSE_ROTATION_SCALER);
         orientation = glm::rotate(orientation, yawAngle, up);
 
-        int width = window->GetWidth();
-        int height = window->GetHeight();
+        int width = m_Window->GetWidth();
+        int height = m_Window->GetHeight();
 
-        glfwSetCursorPos(window->GetGLFWwindow(), (double)width / 2.0, (double)height / 2.0);
+        glfwSetCursorPos(m_Window->GetGLFWwindow(), (double)width / 2.0, (double)height / 2.0);
         
-        lastX = (double)width / 2.0;
-        lastY = (double)height / 2.0;
+        m_lastX = (double)width / 2.0;
+        m_lastY = (double)height / 2.0;
     }
 
     static bool foccusedAlreadyPressed = false;
     void Camera::Inputs()
     {
-        if(glfwGetKey(window->GetGLFWwindow(), GLFW_KEY_ESCAPE) == GLFW_PRESS && !foccusedAlreadyPressed)
+        if(glfwGetKey(m_Window->GetGLFWwindow(), GLFW_KEY_ESCAPE) == GLFW_PRESS && !foccusedAlreadyPressed)
         {
             foccusedAlreadyPressed = true;
-            foccused = !foccused;
-            if(foccused)
-                glfwSetInputMode(window->GetGLFWwindow(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+            m_Foccused = !m_Foccused;
+            if(m_Foccused)
+                glfwSetInputMode(m_Window->GetGLFWwindow(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
             else
-                glfwSetInputMode(window->GetGLFWwindow(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+                glfwSetInputMode(m_Window->GetGLFWwindow(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
         }
-        else if(glfwGetKey(window->GetGLFWwindow(), GLFW_KEY_ESCAPE) == GLFW_RELEASE && foccusedAlreadyPressed) foccusedAlreadyPressed = false;
+        else if(glfwGetKey(m_Window->GetGLFWwindow(), GLFW_KEY_ESCAPE) == GLFW_RELEASE && foccusedAlreadyPressed) foccusedAlreadyPressed = false;
         
-        if(!foccused) return; 
+        if(!m_Foccused) return; 
 
         // Named constants for movement speeds
-        if(glfwGetKey(window->GetGLFWwindow(), GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
+        if(glfwGetKey(m_Window->GetGLFWwindow(), GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
             speed = SPRINT_SPEED;
         else
             speed = DEFAULT_SPEED;
@@ -112,17 +112,17 @@ namespace e
         // Directional vectors
         glm::vec3 right = glm::normalize(glm::cross(orientation, up));
 
-        if(glfwGetKey(window->GetGLFWwindow(), GLFW_KEY_W) == GLFW_PRESS)
+        if(glfwGetKey(m_Window->GetGLFWwindow(), GLFW_KEY_W) == GLFW_PRESS)
             position += speed * orientation * Renderer::deltaTime;
-        if(glfwGetKey(window->GetGLFWwindow(), GLFW_KEY_S) == GLFW_PRESS)
+        if(glfwGetKey(m_Window->GetGLFWwindow(), GLFW_KEY_S) == GLFW_PRESS)
             position += speed * -orientation * Renderer::deltaTime;
-        if(glfwGetKey(window->GetGLFWwindow(), GLFW_KEY_A) == GLFW_PRESS)
+        if(glfwGetKey(m_Window->GetGLFWwindow(), GLFW_KEY_A) == GLFW_PRESS)
             position += speed * -right * Renderer::deltaTime;
-        if(glfwGetKey(window->GetGLFWwindow(), GLFW_KEY_D) == GLFW_PRESS)
+        if(glfwGetKey(m_Window->GetGLFWwindow(), GLFW_KEY_D) == GLFW_PRESS)
             position += speed * right * Renderer::deltaTime;
-        if (glfwGetKey(window->GetGLFWwindow(), GLFW_KEY_SPACE) == GLFW_PRESS)
+        if (glfwGetKey(m_Window->GetGLFWwindow(), GLFW_KEY_SPACE) == GLFW_PRESS)
             position += speed * up * Renderer::deltaTime;
-        if (glfwGetKey(window->GetGLFWwindow(), GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS)
+        if (glfwGetKey(m_Window->GetGLFWwindow(), GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS)
             position += speed * -up * Renderer::deltaTime;
     }
 }

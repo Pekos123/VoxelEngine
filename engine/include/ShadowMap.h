@@ -18,15 +18,15 @@ namespace e
 
         void BindTexture(uint32_t slot = 0) const;
 
-        uint32_t GetTextureID() const { return depthTexture; }
-        uint32_t GetSize() const { return size; }
+        uint32_t GetTextureID() const { return m_DepthTexture; }
+        uint32_t GetSize() const { return m_Size; }
 
         glm::mat4 GetLightSpaceMatrix(const glm::vec3& sunPos, const glm::vec3& playerPos);
 
     private:
-        uint32_t fbo;
-        uint32_t depthTexture;
-        uint32_t size;
+        uint32_t m_Fbo;
+        uint32_t m_DepthTexture;
+        uint32_t m_Size;
     };
 }
 

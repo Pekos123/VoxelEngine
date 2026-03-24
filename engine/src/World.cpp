@@ -169,16 +169,16 @@ namespace e
         if (y < 0 || y >= CHUNK_HEIGHT) return 0;
         int cx = (int)floor((float)x / CHUNK_SIZE) * CHUNK_SIZE;
         int cz = (int)floor((float)z / CHUNK_SIZE) * CHUNK_SIZE;
-        auto it = chunks.find({cx, 0, cz});
-        return (it != chunks.end()) ? it->second.blocks[x - cx][y][z - cz] : 0;
+        auto it = m_Chunks.find({cx, 0, cz});
+        return (it != m_Chunks.end()) ? it->second.blocks[x - cx][y][z - cz] : 0;
     }
     void World::SetBlock(int x, int y, int z, uint8_t type)
     {
         if (y < 0 || y >= CHUNK_HEIGHT) return;
         int cx = (int)floor((float)x / CHUNK_SIZE) * CHUNK_SIZE;
         int cz = (int)floor((float)z / CHUNK_SIZE) * CHUNK_SIZE;
-        auto it = chunks.find({cx, 0, cz});
-        if (it != chunks.end()) {
+        auto it = m_Chunks.find({cx, 0, cz});
+        if (it != m_Chunks.end()) {
             int lx = x - cx;
             int lz = z - cz;
             if (it->second.blocks[lx][y][lz] != type) {
@@ -228,14 +228,14 @@ namespace e
         int count = 0;
         int maxUnloadsPerFrame = 1; // Limit unloads per frame to avoid disk I/O spikes
 
-        for (auto it = chunks.begin(); it != chunks.end(); ) {
+        for (auto it = m_Chunks.begin(); it != m_Chunks.end(); ) {
             glm::vec3 chunkPos = glm::vec3(it->first.x, 0, it->first.z);
             float distSq = glm::distance2(glm::vec2(cameraPos.x, cameraPos.z), 
                                           glm::vec2(chunkPos.x, chunkPos.z));       
             if (distSq > thresholdSq) {
                 SaveChunkToDisk(it->second);
                 it->second.DeleteBuffers();
-                it = chunks.erase(it);
+                it = m_Chunks.erase(it);
                 count++;
                 if (count >= maxUnloadsPerFrame) break; 
             } else {
@@ -263,15 +263,15 @@ namespace e
                 for (int z = -r; z <= r; z++) {
                     if (abs(x) != r && abs(z) != r) continue;
                     glm::ivec3 pos((camChunkX + x) * CHUNK_SIZE, 0, (camChunkZ + z) * CHUNK_SIZE);
-                    if (chunks.find(pos) == chunks.end()) {
+                    if (m_Chunks.find(pos) == m_Chunks.end()) {
                         LoadChunk(pos);
-                        chunks[pos].GenerateMesh(this);
+                        m_Chunks[pos].GenerateMesh(this);
                         glm::ivec3 neighbors[] = {
                             {pos.x + CHUNK_SIZE, 0, pos.z}, {pos.x - CHUNK_SIZE, 0, pos.z},
                             {pos.x, 0, pos.z + CHUNK_SIZE}, {pos.x, 0, pos.z - CHUNK_SIZE}
                         };
                         for (const auto& nPos : neighbors) {
-                            if (chunks.count(nPos)) chunks[nPos].GenerateMesh(this);
+                            if (m_Chunks.count(nPos)) m_Chunks[nPos].GenerateMesh(this);
                         }
                         
                         loadsThisFrame++;
@@ -294,16 +294,16 @@ namespace e
                 LoadChunk(glm::ivec3(x * CHUNK_SIZE, 0, z * CHUNK_SIZE));
             }
         }
-        for (auto& pair : chunks) pair.second.GenerateMesh(this);
+        for (auto& pair : m_Chunks) pair.second.GenerateMesh(this);
     }
 
     void World::SaveToFile(const std::string& filename)
     {
         std::ofstream out(filename, std::ios::binary);
         if (!out) return;
-        uint32_t chunkCount = (uint32_t)chunks.size();
+        uint32_t chunkCount = (uint32_t)m_Chunks.size();
         out.write((char*)&chunkCount, sizeof(uint32_t));
-        for (auto& [pos, chunk] : chunks) {
+        for (auto& [pos, chunk] : m_Chunks) {
             out.write((char*)&pos, sizeof(glm::ivec3));
             out.write((char*)chunk.blocks, CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE);
         }
@@ -318,28 +318,28 @@ namespace e
         for (uint32_t i = 0; i < chunkCount; ++i) {
             glm::ivec3 pos;
             in.read((char*)&pos, sizeof(glm::ivec3));
-            if (chunks.find(pos) == chunks.end()) {
+            if (m_Chunks.find(pos) == m_Chunks.end()) {
                 Chunk newChunk;
                 newChunk.position = pos;
                 newChunk.vao = std::make_shared<VertexArray>();
                 newChunk.vbo = std::make_shared<VertexBuffer>(nullptr, CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE * 6 * sizeof(uint32_t));
                 newChunk.vbo->SetLayout({{ShaderDataType::UInt, "a_Data"}});
                 newChunk.vao->AddVertexBuffer(newChunk.vbo);
-                chunks[pos] = newChunk;
+                m_Chunks[pos] = newChunk;
             }
-            in.read((char*)chunks[pos].blocks, CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE);
+            in.read((char*)m_Chunks[pos].blocks, CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE);
         }
-        for (auto& pair : chunks) pair.second.GenerateMesh(this);
+        for (auto& pair : m_Chunks) pair.second.GenerateMesh(this);
         return true;
     }
 
     void World::LoadChunk(const glm::ivec3& chunkPos)
     {
         // Already loaded? skip
-        if (chunks.find(chunkPos) != chunks.end()) return;
+        if (m_Chunks.find(chunkPos) != m_Chunks.end()) return;
 
         // Insert a chunk in the map first, get a reference
-        Chunk& chunk = chunks[chunkPos];
+        Chunk& chunk = m_Chunks[chunkPos];
         chunk.position = chunkPos;
 
         // Setup VAO/VBO for the chunk
@@ -360,7 +360,7 @@ namespace e
             // Mark as generating to prevent SetBlock from regenerating mesh mid-tree
             chunk.isGenerating = true;
             // Generate terrain + trees in the chunk
-            chunk.GenerateData(gen, this);
+            chunk.GenerateData(m_Gen, this);
             chunk.isGenerating = false;
             // Generate mesh once at the end
             chunk.GenerateMesh(this);
@@ -378,17 +378,17 @@ namespace e
         }
     }
     void World::UnloadChunk(const glm::ivec3& chunkPos) { 
-        auto it = chunks.find(chunkPos);
-        if (it != chunks.end()) {
+        auto it = m_Chunks.find(chunkPos);
+        if (it != m_Chunks.end()) {
             SaveChunkToDisk(it->second);
-            chunks.erase(it); 
+            m_Chunks.erase(it); 
         }
     }
     void World::UnloadAllChunks() { 
-        for (auto& [pos, chunk] : chunks) {
+        for (auto& [pos, chunk] : m_Chunks) {
             SaveChunkToDisk(chunk);
         }
-        chunks.clear(); 
+        m_Chunks.clear(); 
     }
 
     void World::Draw(const std::shared_ptr<Shader>& shader, const glm::vec3& cameraPos, const glm::vec3& cameraDir, float renderDistance)
@@ -398,7 +398,7 @@ namespace e
         // The "Forward" vector of the camera
         glm::vec3 look = glm::normalize(cameraDir);
 
-        for (auto& pair : chunks) {
+        for (auto& pair : m_Chunks) {
             Chunk& chunk = pair.second;
 
             glm::vec3 chunkPos = glm::vec3(chunk.position);
@@ -421,7 +421,7 @@ namespace e
     {
         float renderDistSq = renderDistance * renderDistance;
 
-        for (auto& pair : chunks) {
+        for (auto& pair : m_Chunks) {
             Chunk& chunk = pair.second;
 
             glm::vec3 chunkCenter = glm::vec3(chunk.position.x + CHUNK_SIZE / 2.0f, CHUNK_HEIGHT / 2.0f, chunk.position.z + CHUNK_SIZE / 2.0f);
@@ -481,8 +481,8 @@ namespace e
 
     Chunk* World::GetChunk(const glm::ivec3& chunkPos)
     {
-        auto it = chunks.find(chunkPos);
-        return (it != chunks.end()) ? &it->second : nullptr;
+        auto it = m_Chunks.find(chunkPos);
+        return (it != m_Chunks.end()) ? &it->second : nullptr;
     }
 
     RaycastResult World::Raycast(const glm::vec3& origin, const glm::vec3& direction, float maxDistance)

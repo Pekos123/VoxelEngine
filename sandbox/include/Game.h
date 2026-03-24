@@ -25,7 +25,7 @@ private:
     e::Camera camera;
     e::World* world = nullptr;
     std::shared_ptr<e::Window> window;
-    e::UI::Squere squere;
+    e::UI::Rectangle squere;
     
     std::shared_ptr<e::Shader> objShader;
     std::shared_ptr<e::Shader> outlineShader;

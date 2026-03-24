@@ -4,12 +4,12 @@
 namespace e
 {
     ShadowMap::ShadowMap(uint32_t size)
-        : size(size)
+        : m_Size(size)
     {
-        glGenFramebuffers(1, &fbo);
+        glGenFramebuffers(1, &m_Fbo);
 
-        glGenTextures(1, &depthTexture);
-        glBindTexture(GL_TEXTURE_2D, depthTexture);
+        glGenTextures(1, &m_DepthTexture);
+        glBindTexture(GL_TEXTURE_2D, m_DepthTexture);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, size, size, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
 
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -21,8 +21,8 @@ namespace e
         float borderColor[] = { 1.0f, 1.0f, 1.0f, 1.0f }; // Areas outside light box are unshadowed
         glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
 
-        glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthTexture, 0);
+        glBindFramebuffer(GL_FRAMEBUFFER, m_Fbo);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, m_DepthTexture, 0);
         
         // No color buffer needed for shadow mapping
         glDrawBuffer(GL_NONE);
@@ -36,14 +36,14 @@ namespace e
 
     ShadowMap::~ShadowMap()
     {
-        glDeleteFramebuffers(1, &fbo);
-        glDeleteTextures(1, &depthTexture);
+        glDeleteFramebuffers(1, &m_Fbo);
+        glDeleteTextures(1, &m_DepthTexture);
     }
 
     void ShadowMap::Bind() const
     {
-        glViewport(0, 0, size, size);
-        glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+        glViewport(0, 0, m_Size, m_Size);
+        glBindFramebuffer(GL_FRAMEBUFFER, m_Fbo);
         glClear(GL_DEPTH_BUFFER_BIT);
     }
 
@@ -55,7 +55,7 @@ namespace e
     void ShadowMap::BindTexture(uint32_t slot) const
     {
         glActiveTexture(GL_TEXTURE0 + slot);
-        glBindTexture(GL_TEXTURE_2D, depthTexture);
+        glBindTexture(GL_TEXTURE_2D, m_DepthTexture);
     }
 
     glm::mat4 ShadowMap::GetLightSpaceMatrix(const glm::vec3& sunPos, const glm::vec3& playerPos)
@@ -78,14 +78,14 @@ namespace e
         shadowOrigin = lightSpaceMatrix * shadowOrigin;
         
         // Convert to actual texel coordinates
-        shadowOrigin *= ((float)size / 2.0f);
+        shadowOrigin *= ((float)m_Size / 2.0f);
     
         // Calculate the rounding offset
         glm::vec4 roundedOrigin = glm::round(shadowOrigin);
         glm::vec4 roundOffset = roundedOrigin - shadowOrigin;
         
         // Convert back to light space units
-        roundOffset *= (2.0f / (float)size);
+        roundOffset *= (2.0f / (float)m_Size);
         roundOffset.z = 0.0f;
         roundOffset.w = 0.0f;
     

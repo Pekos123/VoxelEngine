@@ -33,20 +33,20 @@ namespace e
         
             void Draw();
         };
-        class Squere : Shape
+        class Rectangle : Shape
         {
         private:
-            Texture2D* txt;
+            std::unique_ptr<Texture2D> m_Texture;
         
-            std::shared_ptr<e::VertexArray> vao;
-            std::shared_ptr<e::VertexBuffer> vbo;
-            std::shared_ptr<e::IndexBuffer> ibo;
+            std::shared_ptr<e::VertexArray> m_Vao;
+            std::shared_ptr<e::VertexBuffer> m_Vbo;
+            std::shared_ptr<e::IndexBuffer> m_Ibo;
             
             std::shared_ptr<Shader> m_Shader;
             
             void BindBuffers();
         public:
-            Squere(glm::ivec2 size);
+            Rectangle(glm::ivec2 size);
 
             glm::ivec2 size;
             glm::ivec2 pos;
@@ -64,11 +64,11 @@ namespace e
         class Text
         {
         private:
-            e::Shader* shader;
-            std::shared_ptr<e::VertexArray> vao;
-            std::shared_ptr<e::VertexBuffer> vbo;
+            std::unique_ptr<e::Shader> m_Shader;
+            std::shared_ptr<e::VertexArray> m_Vao;
+            std::shared_ptr<e::VertexBuffer> m_Vbo;
             
-            std::map<char, Character> Characters;
+            std::map<char, Character> m_Characters;
         public:
             glm::vec3 color = {.0f, .0f, .0f};
             glm::ivec2 pos = {100, 100};

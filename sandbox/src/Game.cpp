@@ -8,7 +8,7 @@
 #include <iostream>
 
 Game::Game(const std::string& savePath, std::shared_ptr<e::Window> window) 
-    : player({ 8.0f, 80.0f, 40.0f }), camera({ 8.0f, 80.0f, 40.0f }, window.get()), squere({80, 80}), window(window)
+    : player({ 8.0f, 80.0f, 40.0f }), camera({ 8.0f, 80.0f, 40.0f }, window), squere({80, 80}), window(window)
 {
     world = new e::World(55555, savePath); // seed and save path
     shadowMap = std::make_unique<e::ShadowMap>(2048);

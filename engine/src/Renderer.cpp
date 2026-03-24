@@ -2,13 +2,13 @@
 
 namespace e
 {
-    float Renderer::lastTime = 0.0f;
+    float Renderer::m_LastTime = 0.0f;
     float Renderer::deltaTime = 0.0f;
 
     void Renderer::Clear()
     {
-        deltaTime = (float)glfwGetTime() - lastTime;
-        lastTime = (float)glfwGetTime();
+        deltaTime = (float)glfwGetTime() - m_LastTime;
+        m_LastTime = (float)glfwGetTime();
             
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     }

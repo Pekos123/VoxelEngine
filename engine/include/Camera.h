@@ -19,12 +19,12 @@ namespace e
     class Camera
     {
         private:
-            e::Window* window;
+            std::shared_ptr<e::Window> m_Window;
 
-            float lastX, lastY;
+            float m_lastX, m_lastY;
 
-            bool foccused = true;
-            bool firstMouse = true;
+            bool m_Foccused = true;
+            bool m_FirstMouse = true;
         public:
             glm::vec3 position;
             glm::vec3 orientation = glm::vec3(0.0f, 0.0f, -1.0f);
@@ -33,7 +33,7 @@ namespace e
             float speed = 0.1f;
             float sensitivity = 1.0f;
 
-            Camera(glm::vec3 pos, e::Window* window);
+            Camera(glm::vec3 pos, std::shared_ptr<e::Window> window);
 
             void Matrix(float FOV, float near, float far, e::Shader& shader, const char* uniform);
             void UpdateProjection(int currentWidth, int currentHeight);
@@ -42,7 +42,6 @@ namespace e
             void CameraMovement();
 
             glm::mat4 GetViewProjectionMatrix(float FOV, float near, float far) const;
-            glm::vec3 GetPosition() const { return position; }
     };
 }
 
