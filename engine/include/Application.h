@@ -1,13 +1,17 @@
 #pragma once
 #include "Window.h"
+
+#include <glad/glad.h>
+
 #include <memory>
+#include <string>
 
 namespace e
 {
     class Application
     {
     public:
-        Application();
+        Application(const std::string& title);
         virtual ~Application();
 
         virtual void OnUpdate() {}

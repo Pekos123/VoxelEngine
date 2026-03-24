@@ -42,12 +42,15 @@ target_include_directories(engine PUBLIC
     ../external/imgui
     ../external/imgui/backends
     ../external/stb
+    ../external/ft/include
+    ../external/ft/
 )
-
+get_filename_component(FREETYPE_LIB_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../external/ft/freetype.lib" ABSOLUTE)
 # Link libraries
 target_link_libraries(engine
     glfw
     opengl32
+    "${FREETYPE_LIB_PATH}"
 )
 
 # Define for ImGui OpenGL3 backend

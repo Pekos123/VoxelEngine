@@ -1,11 +1,11 @@
 #include "Application.h"
-#include <glad/glad.h>
+
 
 namespace e
 {
-    Application::Application()
+    Application::Application(const std::string& title)
     {
-        m_Window = std::make_shared<Window>(1280, 720, "Game Engine");
+        m_Window = std::make_shared<Window>(1280, 720, title.c_str());
     }
 
     Application::~Application()

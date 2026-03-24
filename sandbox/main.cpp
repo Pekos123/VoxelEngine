@@ -10,6 +10,7 @@
 #include <Player.h>
 #include <ShapeUI.h>
 #include <Scene.h>
+#include <Event.h>
 
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
@@ -154,7 +155,7 @@ class Game : public e::Scene
         );
     }
     // IMGUI END
-   
+    
     void SetupOutlineBuffer()
     {
         float cubeVertices[] = {
@@ -448,12 +449,16 @@ public:
 };
 class MainMenu : public e::Scene
 {
+    e::Event* changeSceneEvent;
+    
     std::shared_ptr<e::Window> window;
 
     glm::vec3 backgroundColor = {.8f, .8f, .8f};
 
     glm::ivec2 squereSize = {380, 120};
     e::UI::Squere squere;
+    
+    e::UI::Text text;
 
     void LoadShaders()
     {
@@ -462,7 +467,13 @@ class MainMenu : public e::Scene
         std::string uiFSrc = e::Utils::ReadFile(uiFPath);
         std::string uiVSrc = e::Utils::ReadFile(uiVPath); // Using same source for vert and frag
 
+        std::string textVPath = (e::Utils::GetRootDir() / "engine/shaders/text/text.vert").string();
+        std::string textFPath = (e::Utils::GetRootDir() / "engine/shaders/text/text.frag").string();
+        std::string textFSrc = e::Utils::ReadFile(textFPath);
+        std::string textVSrc = e::Utils::ReadFile(textVPath); // Using same source for vert and frag
+
         squere.CompileShaders(uiVSrc, uiFSrc);
+        text.CompileShaders(textVSrc, textFSrc);
     }
 
     void DrawUI()
@@ -470,14 +481,33 @@ class MainMenu : public e::Scene
         int width = window->GetWidth();
         int height = window->GetHeight();
 
-        squere.pos = {width/2 - (squere.size.x / 2), height/2 - (squere.size.y)};
+        squere.pos = {width/2 - (squere.size.x / 2), height/2 - (squere.size.y / 2)};
         squere.Draw(width, height);
+
+        text.pos = {width/2 - (text.fontSize * (text.text.length() / 2)), height/2 - (text.fontSize/2)};
+        text.text = "PLAY";
+        text.Draw(width, height);
+    }
+    void Input()
+    {
+        if(glfwGetMouseButton(window->GetGLFWwindow(), GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
+        {
+            double mx, my;
+            glfwGetCursorPos(window->GetGLFWwindow(), &mx, &my);
+
+            bool isInWidth = mx >= squere.pos.x && mx <= squere.pos.x + squere.size.x;
+            bool isInHeight = my >= squere.pos.y && my <= squere.pos.y + squere.size.y;
+            if(isInWidth && isInHeight) changeSceneEvent->Invoke();
+        }
     }
 public:
-    MainMenu(std::shared_ptr<e::Window> window) : squere(squereSize), window(window)
+    MainMenu(std::shared_ptr<e::Window> window, e::Event* event) : squere(squereSize), window(window), changeSceneEvent(event), text()
     {
         LoadShaders();
         squere.pos = {100, 100};
+
+        std::string fontPath = (e::Utils::GetRootDir() / "engine/fonts/PixelifySans.ttf").string();
+        text.LoadFont(fontPath, 24);
     }
     void Update() override
     {
@@ -485,16 +515,23 @@ public:
         e::Renderer::Clear();
 
         DrawUI();
+        Input();
     }
 };
 class Sandbox : public e::Application
 {
     std::unique_ptr<e::Scene> currScene;
-public:
-    Sandbox(const std::string& savePath) 
+    e::Event e;
+    std::string savePath;
+    void ChangeSceneToGame()
     {
-        //currScene = std::make_unique<Game>(savePath, m_Window);
-        currScene = std::make_unique<MainMenu>(m_Window);
+        currScene = std::make_unique<Game>(savePath, m_Window);
+    }
+public:
+    Sandbox(const std::string& windowTitle, const std::string& savePath) : Application(windowTitle), savePath(savePath)
+    {
+        currScene = std::make_unique<MainMenu>(m_Window, &e);
+        e.AddListener(this, &Sandbox::ChangeSceneToGame);
     }
 
     void OnUpdate() override
@@ -513,7 +550,7 @@ int main()
         std::filesystem::create_directory(savePath);
     }
 
-    Sandbox* app = new Sandbox(savePath);
+    Sandbox* app = new Sandbox("minecraft clone", savePath);
     app->Run();
     delete app;
     return 0;
