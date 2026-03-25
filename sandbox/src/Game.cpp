@@ -73,7 +73,7 @@ void Game::DebugWindowRender()
 
         ImGui::Begin("Player");
             ImGui::InputFloat("Sensivity", &camera.sensitivity, 0.1f, 0.5f);
-            ImGui::InputFloat("Camera Speed", &camera.speed, 0.1f);
+            ImGui::InputFloat("Camera Speed", &camSpeed, 0.1f);
             ImGui::SliderFloat("Render Distance", &renderDistance, 32.0f, 800.0f);
             ImGui::DragFloat("Fov", &fov, 0.1f, 20.f, 120.f);
             ImGui::DragFloat("Movemnt Speed (def: 5.0)", &player.speed, 1.0f, 1.0f, 100.f);
@@ -296,10 +296,19 @@ void Game::DrawWorld()
     }
 }
 
+constexpr float DEFAULT_SPEED = 40.0f;
+constexpr float SPRINT_SPEED = 120.0f;
 void Game::Input()
 {
     if (ImGui::GetIO().WantCaptureMouse) return;
 
+    // Named constants for camera movement speeds
+    if(glfwGetKey(window->GetGLFWwindow(), GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
+        camSpeed = SPRINT_SPEED;
+    else
+        camSpeed = DEFAULT_SPEED;
+
+    // Destroying block
     if(glfwGetMouseButton(window->GetGLFWwindow(), GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
     {
         if (!leftMouseDown) {
@@ -312,7 +321,7 @@ void Game::Input()
     } else {
         leftMouseDown = false;
     }
-
+    // Placing block
     if(glfwGetMouseButton(window->GetGLFWwindow(), GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS)
     {
         if (!rightMouseDown) {
@@ -329,13 +338,12 @@ void Game::Input()
         rightMouseDown = false;
     }
 }
-
 void Game::PlayerMovement()
 {
     if(freeCam) 
     {
         player.position = camera.position - glm::vec3(0.0f, 1.7f, 0.0f);
-        camera.CameraMovement();
+        CameraMovement();
     }
     else 
     {
@@ -343,6 +351,24 @@ void Game::PlayerMovement()
         camera.position = player.position + glm::vec3(0.0f, 1.7f, 0.0f);
         player.HandleInput(window->GetGLFWwindow(), camera.orientation);
     }
+}
+void Game::CameraMovement()
+{
+    // Directional vectors
+    glm::vec3 right = glm::normalize(glm::cross(camera.orientation, camera.up));
+
+    if(glfwGetKey(window->GetGLFWwindow(), GLFW_KEY_W) == GLFW_PRESS)
+        camera.position += camSpeed * camera.orientation * e::Renderer::deltaTime;
+    if(glfwGetKey(window->GetGLFWwindow(), GLFW_KEY_S) == GLFW_PRESS)
+        camera.position += camSpeed * -camera.orientation * e::Renderer::deltaTime;
+    if(glfwGetKey(window->GetGLFWwindow(), GLFW_KEY_A) == GLFW_PRESS)
+        camera.position += camSpeed * -right * e::Renderer::deltaTime;
+    if(glfwGetKey(window->GetGLFWwindow(), GLFW_KEY_D) == GLFW_PRESS)
+        camera.position += camSpeed * right * e::Renderer::deltaTime;
+    if (glfwGetKey(window->GetGLFWwindow(), GLFW_KEY_SPACE) == GLFW_PRESS)
+        camera.position += camSpeed * camera.up * e::Renderer::deltaTime;
+    if (glfwGetKey(window->GetGLFWwindow(), GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS)
+        camera.position += camSpeed * -camera.up * e::Renderer::deltaTime;
 }
 
 void Game::scroll_callback(GLFWwindow* window, double xoffset, double yoffset)

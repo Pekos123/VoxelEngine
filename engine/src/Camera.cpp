@@ -2,8 +2,6 @@
 
 constexpr float MOUSE_ROTATION_SCALER = .1f; 
 constexpr float MAX_NO_CLIP_ANGLE = 88.f;
-constexpr float DEFAULT_SPEED = 40.0f;
-constexpr float SPRINT_SPEED = 120.0f;
 
 namespace e
 {
@@ -101,32 +99,7 @@ namespace e
         
         if(!m_Foccused) return; 
 
-        // Named constants for movement speeds
-        if(glfwGetKey(m_Window->GetGLFWwindow(), GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
-            speed = SPRINT_SPEED;
-        else
-            speed = DEFAULT_SPEED;
-
         // MouseMovement
         Camera::MouseMovement();
-    }
-
-    void Camera::CameraMovement()
-    {
-        // Directional vectors
-        glm::vec3 right = glm::normalize(glm::cross(orientation, up));
-
-        if(glfwGetKey(m_Window->GetGLFWwindow(), GLFW_KEY_W) == GLFW_PRESS)
-            position += speed * orientation * Renderer::deltaTime;
-        if(glfwGetKey(m_Window->GetGLFWwindow(), GLFW_KEY_S) == GLFW_PRESS)
-            position += speed * -orientation * Renderer::deltaTime;
-        if(glfwGetKey(m_Window->GetGLFWwindow(), GLFW_KEY_A) == GLFW_PRESS)
-            position += speed * -right * Renderer::deltaTime;
-        if(glfwGetKey(m_Window->GetGLFWwindow(), GLFW_KEY_D) == GLFW_PRESS)
-            position += speed * right * Renderer::deltaTime;
-        if (glfwGetKey(m_Window->GetGLFWwindow(), GLFW_KEY_SPACE) == GLFW_PRESS)
-            position += speed * up * Renderer::deltaTime;
-        if (glfwGetKey(m_Window->GetGLFWwindow(), GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS)
-            position += speed * -up * Renderer::deltaTime;
     }
 }

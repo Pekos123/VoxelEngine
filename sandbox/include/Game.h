@@ -51,6 +51,7 @@ private:
     int currentPlacingBlockId = e::BlocksID::GRASS;
 
     bool freeCam = false;
+    float camSpeed;
     float renderDistance = 120.0f;
     float fov = 75.0f;
 
@@ -72,6 +73,7 @@ private:
     
     void Input();
     void PlayerMovement();
+    void CameraMovement();
 
     static void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 

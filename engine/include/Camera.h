@@ -29,8 +29,7 @@ namespace e
             glm::vec3 position;
             glm::vec3 orientation = glm::vec3(0.0f, 0.0f, -1.0f);
             glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
-
-            float speed = 0.1f;
+            
             float sensitivity = 1.0f;
 
             Camera(glm::vec3 pos, std::shared_ptr<e::Window> window);
@@ -39,7 +38,6 @@ namespace e
             void UpdateProjection(int currentWidth, int currentHeight);
             void Inputs();
             void MouseMovement();
-            void CameraMovement();
 
             glm::mat4 GetViewProjectionMatrix(float FOV, float near, float far) const;
             glm::mat4 GetViewMatrix(float FOV, float near, float far);
