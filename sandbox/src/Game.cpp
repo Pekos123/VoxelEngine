@@ -7,11 +7,15 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <iostream>
 
+constexpr glm::vec3 PLAYER_START_POS = { 8.0f, 80.0f, 40.0f };
+constexpr glm::vec2 SQUERE_SIZE = { 80, 80 };
+constexpr int SEED = 55555;
+constexpr int SHADOW_MAP_SIZE = 2048;
 Game::Game(const std::string& savePath, std::shared_ptr<e::Window> window) 
-    : player({ 8.0f, 80.0f, 40.0f }), camera({ 8.0f, 80.0f, 40.0f }, window), squere({80, 80}), window(window)
+    : player(PLAYER_START_POS), camera(PLAYER_START_POS, window), squere(SQUERE_SIZE), window(window)
 {
-    world = new e::World(55555, savePath); // seed and save path
-    shadowMap = std::make_unique<e::ShadowMap>(2048);
+    world = new e::World(SEED, savePath); // seed and save path
+    shadowMap = std::make_unique<e::ShadowMap>(SHADOW_MAP_SIZE);
     
     DebugWindowInit();   
     LoadTextures();
@@ -49,6 +53,54 @@ void Game::Update()
     DebugWindowRender(); 
 }
 
+void Game::MainDebugWindow()
+{
+    ImGui::Begin("Debug Window");
+    {
+        ImGui::Text("Chunks: %d", 0); 
+        ImGui::ColorEdit3("Object Color", glm::value_ptr(objectColor));
+        ImGui::ColorEdit3("Sky Color", glm::value_ptr(skyColor));
+        ImGui::DragFloat3("Light Position", glm::value_ptr(lightPos), 0.5f);
+        ImGui::ColorEdit3("Outline Color", glm::value_ptr(outlineColor));
+        ImGui::DragFloat("Outline Thickness", &outlineThickness, 0.1f, 0.1f, 5.0f);
+        ImGui::DragInt("Block Id", &currentPlacingBlockId, 1, e::BlocksID::GRASS, e::BlocksID::SANDSTONE);
+        ImGui::DragFloat3("SunPos: ", glm::value_ptr(sunPos), 0.05f, -1.0f, 1.f);
+        if(ImGui::Button("Recompile shaders", {150, 30}))
+            LoadShaders();
+    }
+    ImGui::End();
+}
+void Game::PlayerDebugWindow()
+{
+    ImGui::Begin("Player");
+    {
+        ImGui::InputFloat("Sensivity", &camera.sensitivity, 0.1f, 0.5f);
+        ImGui::InputFloat("Camera Speed", &camSpeed, 0.1f);
+        ImGui::SliderFloat("Render Distance", &renderDistance, 32.0f, 800.0f);
+        ImGui::DragFloat("Fov", &fov, 0.1f, 20.f, 120.f);
+        ImGui::DragFloat("Movemnt Speed (def: 5.0)", &player.speed, 1.0f, 1.0f, 100.f);
+        ImGui::DragFloat("Jump force (def: 8.0)", &player.jumpForce, 1.0f, 1.0f, 100.f);
+        ImGui::DragFloat("Gravity (def: -25.0)", &player.speed, 1.0f, -100.f, 0.f);
+        ImGui::Checkbox("Free fly", &freeCam);
+    }    
+    ImGui::End();
+}
+void Game::PerformanceDebugWindow()
+{
+    ImGui::Begin("Performance");
+    {
+        ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
+        
+        e::RaycastResult result = world->Raycast(camera.position, camera.orientation, 10.0f);
+        if (result.hit) {
+            ImGui::Text("Target Block: %d, %d, %d", result.blockPos.x, result.blockPos.y, result.blockPos.z);
+        } else {
+            ImGui::Text("Target Block: None");
+        }
+        ImGui::Text("Renderer chunks: %d", world->GetLoadedChunkCount());
+    }
+    ImGui::End();
+}
 void Game::DebugWindowRender()
 {
     ImGui_ImplOpenGL3_NewFrame();
@@ -57,43 +109,13 @@ void Game::DebugWindowRender()
     
     RenderCrosshair();
 
+    // Debug's menus
     {
-        ImGui::Begin("Debug Window");
-            ImGui::Text("Chunks: %d", 0); 
-            ImGui::ColorEdit3("Object Color", glm::value_ptr(objectColor));
-            ImGui::ColorEdit3("Sky Color", glm::value_ptr(skyColor));
-            ImGui::DragFloat3("Light Position", glm::value_ptr(lightPos), 0.5f);
-            ImGui::ColorEdit3("Outline Color", glm::value_ptr(outlineColor));
-            ImGui::DragFloat("Outline Thickness", &outlineThickness, 0.1f, 0.1f, 5.0f);
-            ImGui::DragInt("Block Id", &currentPlacingBlockId, 1, e::BlocksID::GRASS, e::BlocksID::SANDSTONE);
-            ImGui::DragFloat3("SunPos: ", glm::value_ptr(sunPos), 0.05f, -1.0f, 1.f);
-            if(ImGui::Button("Recompile shaders", {150, 30}))
-                LoadShaders();
-        ImGui::End();
-
-        ImGui::Begin("Player");
-            ImGui::InputFloat("Sensivity", &camera.sensitivity, 0.1f, 0.5f);
-            ImGui::InputFloat("Camera Speed", &camSpeed, 0.1f);
-            ImGui::SliderFloat("Render Distance", &renderDistance, 32.0f, 800.0f);
-            ImGui::DragFloat("Fov", &fov, 0.1f, 20.f, 120.f);
-            ImGui::DragFloat("Movemnt Speed (def: 5.0)", &player.speed, 1.0f, 1.0f, 100.f);
-            ImGui::DragFloat("Jump force (def: 8.0)", &player.jumpForce, 1.0f, 1.0f, 100.f);
-            ImGui::DragFloat("Gravity (def: -25.0)", &player.speed, 1.0f, -100.f, 0.f);
-            ImGui::Checkbox("Free fly", &freeCam);
-        ImGui::End();
-
-        ImGui::Begin("Performance");
-            ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
-            
-            e::RaycastResult result = world->Raycast(camera.position, camera.orientation, 10.0f);
-            if (result.hit) {
-                ImGui::Text("Target Block: %d, %d, %d", result.blockPos.x, result.blockPos.y, result.blockPos.z);
-            } else {
-                ImGui::Text("Target Block: None");
-            }
-            ImGui::Text("Renderer chunks: %d", world->GetLoadedChunkCount());
-        ImGui::End();
+        MainDebugWindow();
+        PlayerDebugWindow();
+        PerformanceDebugWindow();
     }
+
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
@@ -342,13 +364,13 @@ void Game::PlayerMovement()
 {
     if(freeCam) 
     {
-        player.position = camera.position - glm::vec3(0.0f, 1.7f, 0.0f);
+        player.position = camera.position - glm::vec3(0.0f, camHeight, 0.0f);
         CameraMovement();
     }
     else 
     {
         player.Update(e::Renderer::deltaTime, *world);
-        camera.position = player.position + glm::vec3(0.0f, 1.7f, 0.0f);
+        camera.position = player.position + glm::vec3(0.0f, camHeight, 0.0f);
         player.HandleInput(window->GetGLFWwindow(), camera.orientation);
     }
 }

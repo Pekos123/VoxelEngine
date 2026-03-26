@@ -49,15 +49,19 @@ private:
     std::unique_ptr<e::TextureArray> texArray;
     std::vector<std::string> textureFiles;
     int currentPlacingBlockId = e::BlocksID::GRASS;
-
+    
     bool freeCam = false;
     float camSpeed;
     float renderDistance = 120.0f;
     float fov = 75.0f;
+    float camHeight = 1.8f;
 
     bool leftMouseDown = false;
     bool rightMouseDown = false;
 
+    void MainDebugWindow();
+    void PlayerDebugWindow();
+    void PerformanceDebugWindow();
     void DebugWindowRender();
     void DebugWindowInit();
     void DebugWindowShutdown();
