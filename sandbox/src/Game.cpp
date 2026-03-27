@@ -206,7 +206,19 @@ void Game::LoadShaders()
     std::string shadowFSrc = e::Utils::ReadFile(shadowFPath);
 
     if (vSrc.empty() || fSrc.empty()) {
-        std::cerr << "CRITICAL: Shader source is empty!" << std::endl;
+        std::cerr << "CRITICAL: Obj (blocks) shader source is empty!" << std::endl;
+        return;
+    }
+    if (outlineVSrc.empty() || outlineFSrc.empty()) {
+        std::cerr << "CRITICAL: Outline shader source is empty!" << std::endl;
+        return;
+    }
+    if (uiVSrc.empty() || uiFSrc.empty()) {
+        std::cerr << "CRITICAL: UI shader source is empty!" << std::endl;
+        return;
+    }
+    if (shadowFSrc.empty() || shadowVSrc.empty()) {
+        std::cerr << "CRITICAL: Shadow shader source is empty!" << std::endl;
         return;
     }
 
