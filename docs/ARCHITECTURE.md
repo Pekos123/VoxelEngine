@@ -10,12 +10,19 @@ The project is divided into two main layers:
 
 ## 🔄 The Application Lifecycle
 
-The engine uses a standard "Application-Loop" pattern:
+The engine uses a scene-based application loop:
 
 1. **Inheritance**: The client creates a class that inherits from `e::Application`.
-2. **Initialization**: The `e::Application` constructor initializes the `Window` (using GLFW and GLAD).
-3. **Loop**: The `Run()` method contains the main engine loop, which calls `OnUpdate()` in every frame.
-4. **Shutdown**: Resources are cleaned up in the destructors of the various classes.
+2. **Initialization**: The `e::Application` constructor initializes the `Window`.
+3. **Scene Management**: The client defines classes inheriting from `e::Scene` (e.g., `MainMenu`, `Game`).
+4. **Loop**: The client's `main` function creates an `Application` and manages scene transitions, typically using `e::Event`.
+5. **Update**: The current scene's `Update()` method is called every frame.
+
+## 📡 Event System
+The `e::Event` class provides a simple way to decouple components:
+- **Listeners**: Objects can register member functions as listeners.
+- **Invocation**: When an event is invoked, all registered listeners are called.
+- **Usage**: Used for scene switching (e.g., clicking "Start" in the menu triggers a scene change event).
 
 ## 👤 Player & Physics System
 The `e::Player` class handles movement and collision detection:
@@ -26,26 +33,28 @@ The `e::Player` class handles movement and collision detection:
 ## 🎨 Rendering Pipeline
 
 ### `e::Renderer`
-A static class responsible for global rendering state and execution.
+A static class responsible for global rendering state and execution. It also tracks `deltaTime` for frame-independent logic.
 
 ### Shadow Mapping
 - **`e::ShadowMap`**: Manages a depth framebuffer and texture for directional light (sun).
 - **PCF (Percentage Closer Filtering)**: The fragment shader implements 3x3 PCF to soften shadow edges.
-- **Front-Face Culling**: During the shadow pass, front faces are culled to minimize shadow acne and light leaking.
+
+### Fog
+- **Linear Fog**: Implemented in the fragment shader to fade distant terrain into a background color, enhancing atmosphere and masking chunk loading.
 
 ### Texture Management
 - **`e::TextureArray`**: Used for block textures to enable efficient batching. Shaders use a `layer` index to select the correct texture from the array.
 - **`e::Texture2D`**: Used for standard single-image textures (e.g., UI elements).
 - **Global Textures**: Block and crop textures are located in the root `/textures` directory for project-wide accessibility.
+
+### Low-Level Abstractions
 The engine wraps low-level OpenGL objects into clean C++ classes:
 - **`Buffer`**: Wraps `VBO` (Vertex Buffer Object) and `EBO` (Element Buffer Object).
 - **`VertexArray`**: Wraps `VAO` (Vertex Array Object).
 - **`Shader`**: Manages GLSL shaders.
 
 ## 🎥 Camera System
-The `e::Camera` class handles the view and projection matrices. It supports:
-- **Input Handling**: Processes keyboard and mouse movement to update the camera's transform.
-- **Math**: Calculates the View-Projection matrix required for vertex shaders.
+The `e::Camera` class handles the view and projection matrices. In the current architecture, input handling and movement logic are moved to the `Scene` (e.g., `Game` class) to allow for different camera behaviors in different game states.
 
 ## 🧱 Voxel Engine System
 
@@ -65,7 +74,10 @@ To maximize rendering efficiency, the engine uses **bit-packing** for vertex dat
 - **Block ID**: Each vertex carries its block ID, used by the shader to index into the `TextureArray`.
 
 ## 🖼 UI System
-The `e::UIBlockDisplay` class allows rendering 3D block icons directly onto the 2D screen, typically used for inventories or hotbars. It uses specialized shaders to project a small cube with the correct block textures.
+The engine provides a 2D UI system in the `e::UI` namespace:
+- **`e::UI::Rectangle`**: Renders textured or colored 2D rectangles.
+- **`e::UI::Text`**: Renders high-quality text using the **FreeType** library. It supports font loading and dynamic color/scale adjustment.
+- **`e::UIBlockDisplay`**: (Legacy) Used for rendering 3D block icons.
 
 ## 🔧 Utilities
 `e::Utils` provides common helper functions, such as `ReadFile`, random number generation, and the core logic for **geometry construction** through `addPackedFace`.
