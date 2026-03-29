@@ -80,7 +80,7 @@ void Game::PlayerDebugWindow()
         ImGui::DragFloat("Fov", &fov, 0.1f, 20.f, 120.f);
         ImGui::DragFloat("Movemnt Speed (def: 5.0)", &player.speed, 1.0f, 1.0f, 100.f);
         ImGui::DragFloat("Jump force (def: 8.0)", &player.jumpForce, 1.0f, 1.0f, 100.f);
-        ImGui::DragFloat("Gravity (def: -25.0)", &player.speed, 1.0f, -100.f, 0.f);
+        ImGui::DragFloat("Gravity (def: -25.0)", &player.gravity, 1.0f, -100.f, 0.f);
         ImGui::Checkbox("Free fly", &freeCam);
     }    
     ImGui::End();
