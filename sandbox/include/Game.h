@@ -12,6 +12,7 @@
 #include <Texture.h>
 #include <Utils.h>
 #include <Renderer.h>
+#include <Block.h>
 
 #include <memory>
 #include <vector>
@@ -48,7 +49,7 @@ private:
 
     std::unique_ptr<e::TextureArray> texArray;
     std::vector<std::string> textureFiles;
-    int currentPlacingBlockId = e::BlocksID::GRASS;
+    int currentPlacingBlockId = e::BlockID::GRASS;
     
     bool freeCam = false;
     float camSpeed;

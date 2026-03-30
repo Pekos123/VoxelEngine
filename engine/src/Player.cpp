@@ -163,7 +163,8 @@ namespace e
 
     bool Player::IsBlockSolid(World& world, int x, int y, int z)
     {
-        // World uses 0 for air
-        return world.GetBlock(x, y, z) != 0;
+        int blockId = world.GetBlock(x, y, z);
+        e::BlockData bData = e::BlockDatabase::Get(static_cast<BlockID>(blockId));
+        return bData.id != BlockID::AIR && bData.type != BlockType::LIQUID;
     }
 }

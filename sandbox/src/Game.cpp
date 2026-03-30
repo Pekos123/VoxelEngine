@@ -63,7 +63,7 @@ void Game::MainDebugWindow()
         ImGui::DragFloat3("Light Position", glm::value_ptr(lightPos), 0.5f);
         ImGui::ColorEdit3("Outline Color", glm::value_ptr(outlineColor));
         ImGui::DragFloat("Outline Thickness", &outlineThickness, 0.1f, 0.1f, 5.0f);
-        ImGui::DragInt("Block Id", &currentPlacingBlockId, 1, e::BlocksID::GRASS, e::BlocksID::SANDSTONE);
+        ImGui::DragInt("Block Id", &currentPlacingBlockId, 1, 0, e::BlockID::COUNT);
         ImGui::DragFloat3("SunPos: ", glm::value_ptr(sunPos), 0.05f, -1.0f, 1.f);
         if(ImGui::Button("Recompile shaders", {150, 30}))
             LoadShaders();
@@ -239,7 +239,9 @@ void Game::LoadTextures()
         (e::Utils::GetRootDir() / "textures/blocks/cobblestone.png").string(),
         (e::Utils::GetRootDir() / "textures/blocks/glass.png").string(),
         (e::Utils::GetRootDir() / "textures/blocks/oak_leaves.png").string(),
-        (e::Utils::GetRootDir() / "textures/blocks/sandstone.png").string() 
+        (e::Utils::GetRootDir() / "textures/blocks/water.png").string(),
+        (e::Utils::GetRootDir() / "textures/blocks/sandstone.png").string(),
+        (e::Utils::GetRootDir() / "textures/blocks/sand_ugly_2.png").string()
     };
 
     texArray = std::make_unique<e::TextureArray>(16, 16, (uint32_t)textureFiles.size());
@@ -348,7 +350,10 @@ void Game::Input()
         if (!leftMouseDown) {
             e::RaycastResult result = world->Raycast(camera.position, camera.orientation, 10.0f);
             if (result.hit) {
-                world->SetBlock(result.blockPos.x, result.blockPos.y, result.blockPos.z, e::BlocksID::AIR);
+                int blockId = world->GetBlock(result.blockPos.x, result.blockPos.y, result.blockPos.z);
+                e::BlockData data = e::BlockDatabase::Get(static_cast<e::BlockID>(blockId));
+                
+                if(data.type != e::BlockType::LIQUID) world->SetBlock(result.blockPos.x, result.blockPos.y, result.blockPos.z, e::BlockID::AIR);
             }
             leftMouseDown = true;
         }
@@ -411,8 +416,8 @@ void Game::scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
     if (instance) 
     {
         instance->currentPlacingBlockId += (int)yoffset;
-        int firstBlock = e::BlocksID::GRASS;
-        int lastBlock = e::BlocksID::SANDSTONE;
+        int firstBlock = e::BlockID::GRASS;
+        int lastBlock = e::BlockID::COUNT-1;
 
         if (instance->currentPlacingBlockId > lastBlock) instance->currentPlacingBlockId = firstBlock;
         if (instance->currentPlacingBlockId < firstBlock) instance->currentPlacingBlockId = lastBlock;

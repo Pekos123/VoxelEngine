@@ -6,6 +6,7 @@ namespace e
         if (side1 && side2) return 0.0f;
         return (3.0f - (float(side1) + float(side2) + float(corner))) / 3.0f;
     }
+    constexpr int waterLevel = 32; // global water level, can be changed later for more interesting terrain
     void Chunk::GenerateTerrain(TerrainGenerator& gen)
     {
         for (int x = 0; x < CHUNK_SIZE; x++) {
@@ -13,18 +14,35 @@ namespace e
                 int worldX = position.x + x;
                 int worldZ = position.z + z;
                 int surfaceHeight = gen.getHeight(worldX, worldZ);
-
-                // this isnt saved, it should be saved and read, bc it generates chunks that were aleardy loaded twice
-                // so thats why for example my house vanished
+            
                 for(int y = 0; y < CHUNK_HEIGHT; y++) {
-                    //int stoneStartH = rand() % 4 - 2;
-                    int mountainStartH = Utils::GetRandomNum(55, 75);
-                    int stoneStartH = Utils::GetRandomNum(3, 7);
-                    uint8_t type = 0;
-                    if (y < surfaceHeight - stoneStartH) type = BlocksID::STONE;
-                    else if (y < surfaceHeight - 1) type = BlocksID::DIRT;
-                    else if(y < surfaceHeight && surfaceHeight > mountainStartH) type = BlocksID::STONE; // for mountains
-                    else if (y < surfaceHeight) type = BlocksID::GRASS;
+                    uint8_t type = BlockID::AIR;
+                    
+                    // 1. Generate SOLID ground
+                    if (y < surfaceHeight) {
+                        int stoneStartH = Utils::GetRandomNum(3, 7);
+                        int mountainStartH = Utils::GetRandomNum(55, 75);
+                    
+                        if (y < surfaceHeight - stoneStartH) {
+                            type = BlockID::STONE;
+                        } else if (y < surfaceHeight - 1) {
+                            type = BlockID::DIRT;
+                        } else {
+                            // Top layer: Use Sand if under water, Grass if above
+                            if (y < waterLevel) {
+                                type = BlockID::SAND; 
+                            } else if (surfaceHeight > mountainStartH) {
+                                type = BlockID::STONE;
+                            } else {
+                                type = BlockID::GRASS;
+                            }
+                        }
+                    } 
+                    // 2. Generate WATER in the gaps
+                    else if (y < waterLevel) {
+                        type = BlockID::WATER;
+                    }
+                
                     blocks[x][y][z] = type;
                 }
             }
@@ -39,7 +57,7 @@ namespace e
                 int worldZ = position.z + z;
                 int y = gen.getHeight(worldX, worldZ);
             
-                if (blocks[x][y-1][z] == BlocksID::GRASS) {
+                if (blocks[x][y-1][z] == BlockID::GRASS) {
                     if (Utils::GetRandomNum(0, 100) < 3) { // 3% chance per step
                         world->AddTree(worldX, y, worldZ);
                     }
@@ -56,7 +74,9 @@ namespace e
     void Chunk::GenerateMesh(World* world) {
         // pack this
         std::vector<uint32_t> vertices;
+        std::vector<uint32_t> transparentVertices;
         vertices.reserve(CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE * 6);
+        transparentVertices.reserve(CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE);
 
         Chunk* nxp = world->GetChunk({position.x + CHUNK_SIZE, 0, position.z});
         Chunk* nxn = world->GetChunk({position.x - CHUNK_SIZE, 0, position.z});
@@ -69,37 +89,44 @@ namespace e
                     uint8_t blockType = blocks[x][y][z];
                     if (blockType == 0) continue;
 
+                    const BlockData& bData = BlockDatabase::Get(static_cast<BlockID>(blockType));
+                    std::vector<uint32_t>& targetVertices = (bData.type == BlockType::LIQUID || bData.type == BlockType::TRANSPARENT) ? transparentVertices : vertices;
+
                     auto getB = [&](int ox, int oy, int oz) -> uint8_t {
                         int nx = x + ox;
                         int ny = y + oy;
                         int nz = z + oz;
 
                         // If we look BELOW the bottom of the world, return a solid "Boundary" block
-                        if (ny < 0) return e::BlocksID::STONE; // Or a specific BEDROCK ID
+                        if (ny < 0) return e::BlockID::STONE; // Or a specific BEDROCK ID
 
                         // If we look ABOVE the sky, it's definitely AIR
-                        if (ny >= CHUNK_HEIGHT) return e::BlocksID::AIR;
+                        if (ny >= CHUNK_HEIGHT) return e::BlockID::AIR;
 
                         if (nx >= 0 && nx < CHUNK_SIZE && nz >= 0 && nz < CHUNK_SIZE) 
                             return blocks[nx][ny][nz];
 
                         // Chunk boundary checks
-                        if (nx >= CHUNK_SIZE) return nxp ? nxp->blocks[0][ny][nz] : e::BlocksID::AIR;
-                        if (nx < 0)           return nxn ? nxn->blocks[CHUNK_SIZE - 1][ny][nz] : e::BlocksID::AIR;
-                        if (nz >= CHUNK_SIZE) return nzp ? nzp->blocks[nx][ny][0] : e::BlocksID::AIR;
-                        if (nz < 0)           return nzn ? nzn->blocks[nx][ny][CHUNK_SIZE - 1] : e::BlocksID::AIR;
+                        if (nx >= CHUNK_SIZE) return nxp ? nxp->blocks[0][ny][nz] : e::BlockID::AIR;
+                        if (nx < 0)           return nxn ? nxn->blocks[CHUNK_SIZE - 1][ny][nz] : e::BlockID::AIR;
+                        if (nz >= CHUNK_SIZE) return nzp ? nzp->blocks[nx][ny][0] : e::BlockID::AIR;
+                        if (nz < 0)           return nzn ? nzn->blocks[nx][ny][CHUNK_SIZE - 1] : e::BlockID::AIR;
 
-                        return e::BlocksID::AIR;
+                        return e::BlockID::AIR;
                     };
 
-                    // Rule: Render face if neighbor is AIR or GLASS
-                    // Note: You might want to skip rendering if BOTH are GLASS to prevent internal flickering
+                    // Rule: Render face if:
+                    // 1. Neighbor is AIR
+                    // 2. Current is Opaque, neighbor is NOT Opaque
+                    // 3. Both are transparent, but different IDs (water next to glass)
                     auto shouldRender = [&](uint8_t neighborId) -> bool {
-                        if (neighborId == e::BlocksID::AIR) return true;
-                        if (neighborId == e::BlocksID::GLASS) {
-                            // Only render the face against glass if this block ISN'T glass
-                            return blockType != e::BlocksID::GLASS;
-                        }
+                        if (neighborId == e::BlockID::AIR) return true;
+                        
+                        const BlockData& nData = BlockDatabase::Get(static_cast<BlockID>(neighborId));
+                        
+                        if (bData.isOpaque && !nData.isOpaque) return true;
+                        if (!bData.isOpaque && !nData.isOpaque && bData.id != nData.id) return true;
+
                         return false;
                     };
 
@@ -116,42 +143,42 @@ namespace e
                         ao[1] = vertexAO(getB(-1, 1, 0), getB(0, 1, 1), getB(-1, 1, 1));
                         ao[2] = vertexAO(getB(1, 1, 0), getB(0, 1, 1), getB(1, 1, 1));
                         ao[3] = vertexAO(getB(1, 1, 0), getB(0, 1, -1), getB(1, 1, -1));
-                        Utils::addPackedFace(vertices, x, y, z, FaceDirection::TOP, ao, blockType);
+                        Utils::addPackedFace(targetVertices, x, y, z, FaceDirection::TOP, ao, blockType);
                     }
                     if (shouldRender(bottomNeighbor)) {
                         ao[0] = vertexAO(getB(-1, -1, 0), getB(0, -1, -1), getB(-1, -1, -1));
                         ao[1] = vertexAO(getB(1, -1, 0), getB(0, -1, -1), getB(1, -1, -1));
                         ao[2] = vertexAO(getB(1, -1, 0), getB(0, -1, 1), getB(1, -1, 1));
                         ao[3] = vertexAO(getB(-1, -1, 0), getB(0, -1, 1), getB(-1, -1, 1));
-                        Utils::addPackedFace(vertices, x, y, z, FaceDirection::BOTTOM, ao, blockType);
+                        Utils::addPackedFace(targetVertices, x, y, z, FaceDirection::BOTTOM, ao, blockType);
                     }
                     if (shouldRender(zNeighbor)) {
                         ao[0] = vertexAO(getB(-1, 0, 1), getB(0, -1, 1), getB(-1, -1, 1));
                         ao[1] = vertexAO(getB(1, 0, 1), getB(0, -1, 1), getB(1, -1, 1));
                         ao[2] = vertexAO(getB(1, 0, 1), getB(0, 1, 1), getB(1, 1, 1));
                         ao[3] = vertexAO(getB(-1, 0, 1), getB(0, 1, 1), getB(-1, 1, 1));
-                        Utils::addPackedFace(vertices, x, y, z, FaceDirection::FRONT, ao, blockType);
+                        Utils::addPackedFace(targetVertices, x, y, z, FaceDirection::FRONT, ao, blockType);
                     }
                     if (shouldRender(nzNeighbor)) {
                         ao[0] = vertexAO(getB(1, 0, -1), getB(0, -1, -1), getB(1, -1, -1));
                         ao[1] = vertexAO(getB(-1, 0, -1), getB(0, -1, -1), getB(-1, -1, -1));
                         ao[2] = vertexAO(getB(-1, 0, -1), getB(0, 1, -1), getB(-1, 1, -1));
                         ao[3] = vertexAO(getB(1, 0, -1), getB(0, 1, -1), getB(1, 1, -1));
-                        Utils::addPackedFace(vertices, x, y, z, FaceDirection::BACK, ao, blockType);
+                        Utils::addPackedFace(targetVertices, x, y, z, FaceDirection::BACK, ao, blockType);
                     }
                     if (shouldRender(nxNeighbor)) {
                         ao[0] = vertexAO(getB(-1, -1, 0), getB(-1, 0, -1), getB(-1, -1, -1));
                         ao[1] = vertexAO(getB(-1, -1, 0), getB(-1, 0, 1), getB(-1, -1, 1));
                         ao[2] = vertexAO(getB(-1, 1, 0), getB(-1, 0, 1), getB(-1, 1, 1));
                         ao[3] = vertexAO(getB(-1, 1, 0), getB(-1, 0, -1), getB(-1, 1, -1));
-                        Utils::addPackedFace(vertices, x, y, z, FaceDirection::LEFT, ao, blockType);
+                        Utils::addPackedFace(targetVertices, x, y, z, FaceDirection::LEFT, ao, blockType);
                     }
                     if (shouldRender(xNeighbor)) {
                         ao[0] = vertexAO(getB(1, -1, 0), getB(1, 0, 1), getB(1, -1, 1));
                         ao[1] = vertexAO(getB(1, -1, 0), getB(1, 0, -1), getB(1, -1, -1));
                         ao[2] = vertexAO(getB(1, 1, 0), getB(1, 0, -1), getB(1, 1, -1));
                         ao[3] = vertexAO(getB(1, 1, 0), getB(1, 0, 1), getB(1, 1, 1));
-                        Utils::addPackedFace(vertices, x, y, z, FaceDirection::RIGHT, ao, blockType);
+                        Utils::addPackedFace(targetVertices, x, y, z, FaceDirection::RIGHT, ao, blockType);
                     }
                 }
             }
@@ -160,6 +187,11 @@ namespace e
         vertexCount = (int)(vertices.size()); 
         if (vertexCount > 0) {
             vbo->SetData(vertices.data(), (uint32_t)(vertices.size() * sizeof(uint32_t)));
+        }
+
+        transparentVertexCount = (int)(transparentVertices.size());
+        if (transparentVertexCount > 0) {
+            transparentVbo->SetData(transparentVertices.data(), (uint32_t)(transparentVertices.size() * sizeof(uint32_t)));
         }
     }
 
@@ -318,13 +350,20 @@ namespace e
             glm::ivec3 pos;
             in.read((char*)&pos, sizeof(glm::ivec3));
             if (m_Chunks.find(pos) == m_Chunks.end()) {
-                Chunk newChunk;
+                Chunk& newChunk = m_Chunks[pos];
                 newChunk.position = pos;
+
+                // Opaque
                 newChunk.vao = std::make_shared<VertexArray>();
                 newChunk.vbo = std::make_shared<VertexBuffer>(nullptr, CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE * 6 * sizeof(uint32_t));
                 newChunk.vbo->SetLayout({{ShaderDataType::UInt, "a_Data"}});
                 newChunk.vao->AddVertexBuffer(newChunk.vbo);
-                m_Chunks[pos] = newChunk;
+
+                // Transparent
+                newChunk.transparentVao = std::make_shared<VertexArray>();
+                newChunk.transparentVbo = std::make_shared<VertexBuffer>(nullptr, CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE * 6 * sizeof(uint32_t) / 4);
+                newChunk.transparentVbo->SetLayout({{ShaderDataType::UInt, "a_Data"}});
+                newChunk.transparentVao->AddVertexBuffer(newChunk.transparentVbo);
             }
             in.read((char*)m_Chunks[pos].blocks, CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE);
         }
@@ -341,13 +380,21 @@ namespace e
         Chunk& chunk = m_Chunks[chunkPos];
         chunk.position = chunkPos;
 
-        // Setup VAO/VBO for the chunk
+        // Setup VAO/VBO for the chunk (Opaque)
         chunk.vao = std::make_shared<VertexArray>();
         chunk.vbo = std::make_shared<VertexBuffer>(
             nullptr, CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE * 6 * sizeof(uint32_t)
         );
         chunk.vbo->SetLayout({{ShaderDataType::UInt, "a_Data"}});
         chunk.vao->AddVertexBuffer(chunk.vbo);
+
+        // Setup VAO/VBO for the chunk (Transparent)
+        chunk.transparentVao = std::make_shared<VertexArray>();
+        chunk.transparentVbo = std::make_shared<VertexBuffer>(
+            nullptr, CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE * 6 * sizeof(uint32_t) / 4
+        );
+        chunk.transparentVbo->SetLayout({{ShaderDataType::UInt, "a_Data"}});
+        chunk.transparentVao->AddVertexBuffer(chunk.transparentVbo);
 
         // Try to load from disk
         std::string filename = m_SavePath + "/chunk_" + std::to_string(chunkPos.x) + "_" + std::to_string(chunkPos.z) + ".dat";
@@ -393,25 +440,38 @@ namespace e
     void World::Draw(const std::shared_ptr<Shader>& shader, const glm::vec3& cameraPos, const glm::vec3& cameraDir, float renderDistance)
     {   
         float renderDistSq = renderDistance * renderDistance;
-
-        // The "Forward" vector of the camera
         glm::vec3 look = glm::normalize(cameraDir);
 
+        // Pass 1: Opaque Blocks
         for (auto& pair : m_Chunks) {
             Chunk& chunk = pair.second;
 
-            glm::vec3 chunkPos = glm::vec3(chunk.position);
             glm::vec3 chunkCenter = glm::vec3(chunk.position.x + CHUNK_SIZE / 2.0f, CHUNK_HEIGHT / 2.0f, chunk.position.z + CHUNK_SIZE / 2.0f);
-
-            // point to plane
             glm::vec3 v = chunkCenter - cameraPos;
-            if (glm::dot(v, look) < -CHUNK_HEIGHT) continue; // Subtract CHUNK_SIZE as a safety margin
+            if (glm::dot(v, look) < -CHUNK_HEIGHT) continue; 
 
             float distSq = glm::dot(cameraPos - chunkCenter, cameraPos - chunkCenter);
 
             if (distSq < renderDistSq && chunk.vertexCount > 0) {
                 shader->SetUniformFloat3("u_ChunkPos", glm::vec3(chunk.position));
                 Renderer::Draw(chunk.vao, (uint32_t)chunk.vertexCount);
+            }
+        }
+
+        // Pass 2: Transparent Blocks (Water, Glass, Leaves)
+        // Optimization: In a real engine, you'd sort these back-to-front
+        for (auto& pair : m_Chunks) {
+            Chunk& chunk = pair.second;
+
+            glm::vec3 chunkCenter = glm::vec3(chunk.position.x + CHUNK_SIZE / 2.0f, CHUNK_HEIGHT / 2.0f, chunk.position.z + CHUNK_SIZE / 2.0f);
+            glm::vec3 v = chunkCenter - cameraPos;
+            if (glm::dot(v, look) < -CHUNK_HEIGHT) continue;
+
+            float distSq = glm::dot(cameraPos - chunkCenter, cameraPos - chunkCenter);
+
+            if (distSq < renderDistSq && chunk.transparentVertexCount > 0) {
+                shader->SetUniformFloat3("u_ChunkPos", glm::vec3(chunk.position));
+                Renderer::Draw(chunk.transparentVao, (uint32_t)chunk.transparentVertexCount);
             }
         }
     }
@@ -424,12 +484,18 @@ namespace e
             Chunk& chunk = pair.second;
 
             glm::vec3 chunkCenter = glm::vec3(chunk.position.x + CHUNK_SIZE / 2.0f, CHUNK_HEIGHT / 2.0f, chunk.position.z + CHUNK_SIZE / 2.0f);
-            float distSq = glm::dot(cameraPos - chunkCenter, cameraPos - cameraPos); // Simple distance check for shadows
+            float distSq = glm::distance2(glm::vec2(cameraPos.x, cameraPos.z), glm::vec2(chunkCenter.x, chunkCenter.z));
 
-            // We don't do frustum culling for shadows because chunks outside view might still cast shadows into view
-            if (chunk.vertexCount > 0) {
-                shadowShader->SetUniformFloat3("u_ChunkPos", glm::vec3(chunk.position));
-                Renderer::Draw(chunk.vao, (uint32_t)chunk.vertexCount);
+            // We include transparent geometry in shadow pass so leaves and glass can cast shadows
+            if (distSq < renderDistSq) {
+                if (chunk.vertexCount > 0) {
+                    shadowShader->SetUniformFloat3("u_ChunkPos", glm::vec3(chunk.position));
+                    Renderer::Draw(chunk.vao, (uint32_t)chunk.vertexCount);
+                }
+                if (chunk.transparentVertexCount > 0) {
+                    shadowShader->SetUniformFloat3("u_ChunkPos", glm::vec3(chunk.position));
+                    Renderer::Draw(chunk.transparentVao, (uint32_t)chunk.transparentVertexCount);
+                }
             }
         }
     }
@@ -448,7 +514,7 @@ namespace e
         int treeHeight = e::Utils::GetRandomNum(3, 6);
         for(int i = 0; i < treeHeight; i++)
         {
-            SetBlockData(x, y+i, z, BlocksID::OAK_LOG);
+            SetBlockData(x, y+i, z, BlockID::OAK_LOG);
         }
         
         // Place leaves
@@ -466,7 +532,7 @@ namespace e
                     int by = y + treeHeight - canopyHeight + i;
                     int bz = z + za;
 
-                    SetBlockData(bx, by, bz, BlocksID::OAK_LEAVES);
+                    SetBlockData(bx, by, bz, BlockID::OAK_LEAVES);
                     MarkChunkAffected(bx, by, bz, chunksAffected);
                 }
             }
@@ -515,7 +581,10 @@ namespace e
             float dist = glm::length(glm::vec3(currentPos) + 0.5f - origin);
             if (dist > maxDistance) break;
         
-            if (GetBlock(currentPos.x, currentPos.y, currentPos.z) != 0)
+            int blockId = GetBlock(currentPos.x, currentPos.y, currentPos.z);
+            e::BlockData bData = BlockDatabase::Get(static_cast<BlockID>(blockId));
+
+            if (bData.id != BlockID::AIR && bData.type != BlockType::LIQUID)
                 return { true, currentPos, -lastNormal };
         
             // Step to nearest voxel boundary

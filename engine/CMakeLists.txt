@@ -15,6 +15,7 @@ add_library(engine STATIC
     src/ShadowMap.cpp
     src/Scene.cpp
     src/Event.cpp
+    src/Block.cpp
 
     # GLAD
     ../external/glad/src/glad.c

@@ -62,9 +62,6 @@ void Rectangle::Draw(int screenWidth, int screenHeight)
     // --- Bulletproof State Management ---
     glDisable(GL_DEPTH_TEST);
     glDisable(GL_CULL_FACE); // <--- IMPORTANT: Prevents the square from vanishing if winding is wrong
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
     // shader binding
     m_Shader->Bind();
     // texture binding
@@ -86,7 +83,6 @@ void Rectangle::Draw(int screenWidth, int screenHeight)
     // --- Reset State ---
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
-    glDisable(GL_BLEND);
 }
 Text::Text()
 {

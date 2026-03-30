@@ -88,7 +88,7 @@ void main() {
 
     // --- 5. TEXTURE ---
     vec4 texColor = texture(u_Textures, vec3(vTexCoord, float(vTextureID)));
-    if(texColor.a < 0.1)
+    if(texColor.a < 0.01)
         discard;
 
     // --- 6. COMBINE ---
@@ -105,6 +105,7 @@ void main() {
     
     // mixing results with our fog
     vec3 finalColor = mix(result, fogColor, fogFactor);
+    float finalAlpha = mix(texColor.a, 1.0, fogFactor);
 
-    FragColor = vec4(finalColor, 1.0);
+    FragColor = vec4(finalColor, finalAlpha);
 }

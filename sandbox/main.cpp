@@ -2,7 +2,7 @@
 #include <filesystem>
 
 int main()
-{
+{    
     std::string savePath = "saves/world";
     if (!std::filesystem::exists("saves")) {
         std::filesystem::create_directory("saves");

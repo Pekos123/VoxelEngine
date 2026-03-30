@@ -6,6 +6,7 @@
 #include <Shader.h>
 #include <VertexArray.h>
 #include <Buffer.h>
+#include <Block.h>
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtc/type_ptr.hpp>
@@ -34,20 +35,6 @@ namespace e
     class Shader;
     class World;
 
-    enum BlocksID
-    {
-        AIR,
-        GRASS,
-        DIRT,
-        STONE,
-        OAK_PLANKS,
-        OAK_LOG,
-        COBBLESTONE,
-        GLASS,
-        OAK_LEAVES,
-        SANDSTONE // LAST BLOCK ALWAYS
-    };
-
     class TerrainGenerator
     {
     public:
@@ -57,21 +44,16 @@ namespace e
         }
         int getHeight(int x, int z)
         {
-            // 1. Continental Noise (Very slow changes, defines biomes/mountains)
             double continentFreq = 0.003; 
             double mask = (noiseGen.noise2(x * continentFreq, z * continentFreq) + 1.0) * 0.5;
-            
-            // Push the mask to extremes so mountains are localized but big
-            // High power (e.g. 3.0) makes mountains rarer and steeper
-            mask = std::pow(mask, 3.0);
-
-            // 2. Detail Noise (The actual hills/mountains shape)
+            mask = std::pow(mask, 2.0); // Power of 2 is slightly more forgiving for oceans
+        
             double detailFreq = 0.015;
             double detail = (noiseGen.noise2(x * detailFreq, z * detailFreq) + 1.0) * 0.5;
-
-            // 3. Combine
-            float baseHeight = 32.0f;       // Minimum land height
-            float mountainScale = 90.0f;  // How big mountains can get
+        
+            // LOWER the baseHeight so the "floor" can be below sea level (32)
+            float baseHeight = 20.0f;     // The deepest the ocean can go
+            float mountainScale = 80.0f; 
             
             return static_cast<int>(baseHeight + (detail * mountainScale * mask));
         }
@@ -90,6 +72,10 @@ namespace e
         std::shared_ptr<VertexArray> vao;
         std::shared_ptr<VertexBuffer> vbo;
         int vertexCount = 0;
+
+        std::shared_ptr<VertexArray> transparentVao;
+        std::shared_ptr<VertexBuffer> transparentVbo;
+        int transparentVertexCount = 0;
         
         void GenerateData(TerrainGenerator& gen, World* world); // step 1: fill array
         void GenerateTerrain(TerrainGenerator& gen);
@@ -99,6 +85,8 @@ namespace e
         void DeleteBuffers() {
             vao.reset();
             vbo.reset();
+            transparentVao.reset();
+            transparentVbo.reset();
         }
     };
 
@@ -139,7 +127,10 @@ namespace e
 
         RaycastResult Raycast(const glm::vec3& origin, const glm::vec3& direction, float maxDistance);
 
-        World(int seed, const std::string& savePath) : m_Gen(seed), m_SavePath(savePath) {}
+        World(int seed, const std::string& savePath) : m_Gen(seed), m_SavePath(savePath)
+        {
+            BlockDatabase::Initialize();
+        }
 
     private:
         void SaveChunkToDisk(const Chunk& chunk);
