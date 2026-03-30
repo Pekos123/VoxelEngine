@@ -54,7 +54,7 @@ private:
     float camSpeed;
     float renderDistance = 120.0f;
     float fov = 75.0f;
-    float camHeight = 1.8f;
+    float camHeight = 1.7f;
 
     bool leftMouseDown = false;
     bool rightMouseDown = false;
