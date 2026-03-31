@@ -1,5 +1,7 @@
 #include "MainMenu.h"
 #include <iostream>
+#include <fstream>
+#include <filesystem>
 
 MainMenu::MainMenu(std::shared_ptr<e::Window> window, e::Event* event) 
     : squere(squereSize), window(window), changeSceneEvent(event), text()
@@ -18,7 +20,79 @@ void MainMenu::Update()
 
     DrawUI();
     Input();
+    ChooseSaveDebug();
 }
+
+void MainMenu::ChooseSaveDebug()
+{
+    ImGui_ImplOpenGL3_NewFrame();
+    ImGui_ImplGlfw_NewFrame();
+    ImGui::NewFrame();
+    
+    {
+        ImGui::Text("List of saves");
+        std::vector<std::string> names = GetSavesNames();
+        for(std::string name : names)
+        {
+            if(ImGui::Button(name.c_str(), {120, 30}))
+                LoadSave(name);
+        }
+        if(ImGui::Button("CreateSave")) showSaveCreatingWindow = !showSaveCreatingWindow;
+    }
+
+    if(showSaveCreatingWindow) CreateNewSaveWindow();
+
+    ImGui::Render();
+    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+}
+void MainMenu::CreateNewSaveWindow()
+{
+    ImGui::Begin("Create save");
+
+    ImGui::InputText("Name of save: ", saveName, 25);
+    ImGui::InputInt("Seed: ", &Game::seed);
+    ImGui::Spacing();
+    if(ImGui::Button("Create", {120, 30}))
+        LoadSave(saveName);
+
+    ImGui::End();
+}
+void MainMenu::LoadSave(const std::string& name)
+{
+    Sandbox::choosedSave = name;
+    std::string fullPath = "saves/" + name;
+    std::string metadataPath = fullPath + "/world.metadata";
+
+    // if world path dont exist create it
+    if (!std::filesystem::exists(fullPath)) std::filesystem::create_directories(fullPath);
+
+    // if .metadata file exist load seed from it, if not create it with default seed
+    if (std::filesystem::exists(metadataPath)) 
+    {
+        std::ifstream in(metadataPath);
+        if (in.is_open()) in >> Game::seed;
+    }
+    // else create it and write to it 
+    else 
+    {
+        std::ofstream out(metadataPath);
+        if (out.is_open()) out << Game::seed;
+    }
+
+    changeSceneEvent->Invoke();
+}
+std::vector<std::string> MainMenu::GetSavesNames()
+{
+    std::vector<std::string> names;
+    std::string savesDir = "saves";
+    for (const auto& entry : std::filesystem::directory_iterator(savesDir)) {
+        if (entry.is_directory()) {
+            names.push_back(entry.path().filename().string());
+        }
+    }
+    return names;
+}
+
 
 void MainMenu::LoadShaders()
 {

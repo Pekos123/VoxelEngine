@@ -9,15 +9,14 @@
 
 constexpr glm::vec3 PLAYER_START_POS = { 8.0f, 80.0f, 40.0f };
 constexpr glm::vec2 SQUERE_SIZE = { 80, 80 };
-constexpr int SEED = 55555;
 constexpr int SHADOW_MAP_SIZE = 2048;
+
 Game::Game(const std::string& savePath, std::shared_ptr<e::Window> window) 
     : player(PLAYER_START_POS), camera(PLAYER_START_POS, window), squere(SQUERE_SIZE), window(window)
 {
-    world = new e::World(SEED, savePath); // seed and save path
+    world = new e::World(seed, savePath); // seed and save path
     shadowMap = std::make_unique<e::ShadowMap>(SHADOW_MAP_SIZE);
     
-    DebugWindowInit();   
     LoadTextures();
     LoadShaders();
     SetupOutlineBuffer();
@@ -34,7 +33,6 @@ Game::~Game()
 {
     world->UnloadAllChunks();
     delete world;
-    DebugWindowShutdown();
 }
 
 void Game::Update()
@@ -118,24 +116,6 @@ void Game::DebugWindowRender()
 
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-}
-
-void Game::DebugWindowInit()
-{
-    IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-    ImGuiIO& io = ImGui::GetIO(); (void)io;
-    ImGui::StyleColorsDark();
-    
-    ImGui_ImplGlfw_InitForOpenGL(window->GetGLFWwindow(), true);
-    ImGui_ImplOpenGL3_Init("#version 330");
-}
-
-void Game::DebugWindowShutdown()
-{
-    ImGui_ImplOpenGL3_Shutdown();
-    ImGui_ImplGlfw_Shutdown();
-    ImGui::DestroyContext();
 }
 
 void Game::RenderCrosshair()

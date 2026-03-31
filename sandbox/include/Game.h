@@ -64,8 +64,6 @@ private:
     void PlayerDebugWindow();
     void PerformanceDebugWindow();
     void DebugWindowRender();
-    void DebugWindowInit();
-    void DebugWindowShutdown();
     void RenderCrosshair();
     
     void SetupOutlineBuffer();
@@ -85,6 +83,8 @@ private:
 public:
     Game(const std::string& savePath, std::shared_ptr<e::Window> window);
     ~Game();
+
+    inline static int seed = 55555;
 
     void Update() override;
 };
