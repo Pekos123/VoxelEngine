@@ -63,6 +63,9 @@ void Game::MainDebugWindow()
         ImGui::DragFloat("Outline Thickness", &outlineThickness, 0.1f, 0.1f, 5.0f);
         ImGui::DragInt("Block Id", &currentPlacingBlockId, 1, 0, e::BlockID::COUNT);
         ImGui::DragFloat3("SunPos: ", glm::value_ptr(sunPos), 0.05f, -1.0f, 1.f);
+        ImGui::Checkbox("Draw chunk outlines", &drawChunkOutlines);
+        // the step have to be chunk size to prevent setting render distance between chunks which would cause visual bugs with outlines
+        if(drawChunkOutlines) ImGui::DragFloat("Chunk render distance", &chunkRenderDistance, CHUNK_SIZE, 16.f, 128.0f); 
         if(ImGui::Button("Recompile shaders", {150, 30}))
             LoadShaders();
     }
@@ -245,6 +248,7 @@ void Game::DrawOutline(glm::mat4 viewProj)
         outlineShader->Bind();
         outlineShader->SetUniformMat4("u_ViewProj", viewProj);
         outlineShader->SetUniformFloat3("blockPos", glm::vec3(result.blockPos));
+        outlineShader->SetUniformFloat3("u_Scale", {1.0f, 1.0f, 1.0f});
         outlineShader->SetUniformFloat4("outlineColor", {outlineColor, 1.0f});
 
         outlineVAO->Bind();
@@ -255,6 +259,42 @@ void Game::DrawOutline(glm::mat4 viewProj)
         glDepthMask(GL_TRUE);
         glLineWidth(1.0f);
     }
+}
+
+void Game::DrawChunkOutlines(const glm::mat4 viewProj, const glm::vec3& cameraPos, const glm::vec3& cameraDir)
+{
+    int chunkX = (int)floor(cameraPos.x / CHUNK_SIZE) * CHUNK_SIZE;
+    int chunkZ = (int)floor(cameraPos.z / CHUNK_SIZE) * CHUNK_SIZE;    
+    e::Chunk* chunk = world->GetChunk({chunkX, 0, chunkZ}); // Ensure the chunk is loaded
+    
+    glDepthMask(GL_FALSE); 
+    glDepthFunc(GL_LEQUAL); 
+    glLineWidth(outlineThickness);
+    glEnable(GL_POLYGON_OFFSET_LINE);
+    glPolygonOffset(-1.0f, -1.0f);
+   
+    for(int x = -chunkRenderDistance; x <= chunkRenderDistance; x += CHUNK_SIZE) {
+        for(int z = -chunkRenderDistance; z <= chunkRenderDistance; z += CHUNK_SIZE) {
+            int currentChunkX = chunkX + x;
+            int currentChunkZ = chunkZ + z;
+
+            // Draw outline for the chunk
+            outlineShader->Bind();
+            outlineShader->SetUniformMat4("u_ViewProj", viewProj);
+            outlineShader->SetUniformFloat3("blockPos", glm::vec3({currentChunkX, 0, currentChunkZ})); 
+            outlineShader->SetUniformFloat3("u_Scale", {CHUNK_SIZE, CHUNK_HEIGHT, CHUNK_SIZE}); 
+            outlineShader->SetUniformFloat4("outlineColor", {chunkOutlineColor, 1.0f});
+            outlineVAO->Bind();
+
+            glDrawElements(GL_LINES, 24, GL_UNSIGNED_INT, nullptr);
+        }
+    }
+
+    glDisable(GL_POLYGON_OFFSET_LINE);
+    glDepthFunc(GL_LESS);
+    glDepthMask(GL_TRUE);
+    glLineWidth(1.0f);
+
 }
 
 void Game::DrawUI()
@@ -309,6 +349,7 @@ void Game::DrawWorld()
 
         world->Draw(objShader, camera.position, camera.orientation, renderDistance);
         DrawOutline(viewProj);
+        if(drawChunkOutlines) DrawChunkOutlines(viewProj, camera.position, camera.orientation);
     }
 }
 

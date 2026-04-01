@@ -41,6 +41,7 @@ private:
     glm::vec3 sunPos = { 0.5f, 1.f, 0.3f };
 
     glm::vec3 outlineColor = { 0.0f, 0.0f, 0.0f };
+    glm::vec3 chunkOutlineColor = { 1.0f, 0.0f, 0.5f };
     float outlineThickness = 2.0f;
 
     std::unique_ptr<e::VertexArray> outlineVAO;
@@ -57,6 +58,9 @@ private:
     float fov = 75.0f;
     float camHeight = 1.7f;
 
+    bool drawChunkOutlines = false;
+    float chunkRenderDistance = 32.0f;
+
     bool leftMouseDown = false;
     bool rightMouseDown = false;
 
@@ -71,6 +75,7 @@ private:
     void LoadTextures();
 
     void DrawOutline(glm::mat4 viewProj);
+    void DrawChunkOutlines(const glm::mat4 viewProj, const glm::vec3& cameraPos, const glm::vec3& cameraDir);
     void DrawUI();
     void DrawWorld();
     
