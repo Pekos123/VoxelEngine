@@ -532,6 +532,12 @@ namespace e
                     int by = y + treeHeight - canopyHeight + i;
                     int bz = z + za;
 
+                    int chunkX = (int)floor((float)bx / CHUNK_SIZE) * CHUNK_SIZE;
+                    int chunkZ = (int)floor((float)bz / CHUNK_SIZE) * CHUNK_SIZE;
+
+                    Chunk* chunk = GetChunk({chunkX, 0, chunkZ});
+                    if(!chunk) LoadChunk({chunkX, 0, chunkZ}); // Load chunk if not loaded yet to prevent tree generation bugs at chunk borders
+
                     SetBlockData(bx, by, bz, BlockID::OAK_LEAVES);
                     MarkChunkAffected(bx, by, bz, chunksAffected);
                 }
