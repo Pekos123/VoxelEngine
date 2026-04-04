@@ -76,8 +76,12 @@ private:
 
     void DrawOutline(glm::mat4 viewProj);
     void DrawChunkOutlines(const glm::mat4 viewProj, const glm::vec3& cameraPos, const glm::vec3& cameraDir);
+    void DrawShadows();
     void DrawUI();
     void DrawWorld();
+
+    void SetOutlineShader(const glm::mat4& viewProj, const glm::vec3& blockPos, const glm::vec3& scale, const glm::vec3& outlineColor);
+    void SetObjectShader(const glm::mat4& viewProj, const glm::mat4& lightSpaceMatrix, float fogStart, float fogEnd);
     
     void Input();
     void PlayerMovement();

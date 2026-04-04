@@ -241,17 +241,12 @@ void Game::DrawOutline(glm::mat4 viewProj)
         glDepthMask(GL_FALSE); 
         glDepthFunc(GL_LEQUAL); 
         glLineWidth(outlineThickness);
-
         glEnable(GL_POLYGON_OFFSET_LINE);
         glPolygonOffset(-1.0f, -1.0f);
         
-        outlineShader->Bind();
-        outlineShader->SetUniformMat4("u_ViewProj", viewProj);
-        outlineShader->SetUniformFloat3("blockPos", glm::vec3(result.blockPos));
-        outlineShader->SetUniformFloat3("u_Scale", {1.0f, 1.0f, 1.0f});
-        outlineShader->SetUniformFloat4("outlineColor", {outlineColor, 1.0f});
-
+        SetOutlineShader(viewProj, glm::vec3(result.blockPos), {1.0f, 1.0f, 1.0f}, outlineColor);
         outlineVAO->Bind();
+
         glDrawElements(GL_LINES, 24, GL_UNSIGNED_INT, nullptr);
 
         glDisable(GL_POLYGON_OFFSET_LINE);
@@ -278,12 +273,7 @@ void Game::DrawChunkOutlines(const glm::mat4 viewProj, const glm::vec3& cameraPo
             int currentChunkX = chunkX + x;
             int currentChunkZ = chunkZ + z;
 
-            // Draw outline for the chunk
-            outlineShader->Bind();
-            outlineShader->SetUniformMat4("u_ViewProj", viewProj);
-            outlineShader->SetUniformFloat3("blockPos", glm::vec3({currentChunkX, 0, currentChunkZ})); 
-            outlineShader->SetUniformFloat3("u_Scale", {CHUNK_SIZE, CHUNK_HEIGHT, CHUNK_SIZE}); 
-            outlineShader->SetUniformFloat4("outlineColor", {chunkOutlineColor, 1.0f});
+            SetOutlineShader(viewProj, glm::vec3({currentChunkX, 0, currentChunkZ}), {CHUNK_SIZE, CHUNK_HEIGHT, CHUNK_SIZE}, chunkOutlineColor);
             outlineVAO->Bind();
 
             glDrawElements(GL_LINES, 24, GL_UNSIGNED_INT, nullptr);
@@ -297,6 +287,39 @@ void Game::DrawChunkOutlines(const glm::mat4 viewProj, const glm::vec3& cameraPo
 
 }
 
+void Game::SetOutlineShader(const glm::mat4& viewProj, const glm::vec3& blockPos, const glm::vec3& scale, const glm::vec3& outlineColor)
+{
+    outlineShader->Bind();
+    outlineShader->SetUniformMat4("u_ViewProj", viewProj);
+    outlineShader->SetUniformFloat3("blockPos", blockPos);
+    outlineShader->SetUniformFloat3("u_Scale", scale);
+    outlineShader->SetUniformFloat4("outlineColor", {outlineColor, 1.0f});
+}
+void Game::SetObjectShader(const glm::mat4& viewProj, const glm::mat4& lightSpaceMatrix, float fogStart, float fogEnd)
+{
+    objShader->Bind();
+    objShader->SetUniformMat4("u_View", camera.GetViewMatrix(fov, 0.1f, 1000.f));
+    objShader->SetUniformMat4("u_ViewProj", viewProj);
+
+    objShader->SetUniformMat4("u_LightSpaceMatrix", lightSpaceMatrix);
+
+    objShader->SetUniformFloat("fogStart", fogStart);
+    objShader->SetUniformFloat("fogEnd", fogEnd);
+    objShader->SetUniformFloat3("fogColor", {0.8f, 0.8f, 0.8f});
+    
+    objShader->SetUniformFloat3("viewPos", camera.position);
+    objShader->SetUniformFloat3("lightPos", lightPos);
+    objShader->SetUniformFloat3("sunPos", sunPos);
+    objShader->SetUniformFloat3("viewPos", camera.position);
+    objShader->SetUniformFloat3("lightColor", { 1.0f, 1.0f, 1.0f });
+    objShader->SetUniformFloat3("objectColor", objectColor);
+
+    if (texArray) {
+        texArray->Bind(0);
+        objShader->SetUniformInt("u_Textures", 0);
+    }
+}
+
 void Game::DrawUI()
 {
     int width = window->GetWidth();
@@ -305,7 +328,12 @@ void Game::DrawUI()
     squere.pos = {width / 2 - (squere.size.x/2), height - 150}; 
     squere.Draw(width, height);
 }
-
+void Game::DrawShadows()
+{
+    shadowMap->Bind();
+    world->DrawShadows(shadowShader, camera.position, renderDistance);
+    shadowMap->Unbind();
+}
 void Game::DrawWorld()
 {
     if (objShader && shadowShader) {
@@ -313,40 +341,22 @@ void Game::DrawWorld()
         shadowShader->Bind();
         shadowShader->SetUniformMat4("u_LightSpaceMatrix", lightSpaceMatrix);
         
-        shadowMap->Bind();
-        world->DrawShadows(shadowShader, camera.position, renderDistance);
-        shadowMap->Unbind();
+        // Shadows draw call here to prevent z-fighting with the main draw call, which would cause flickering shadows on blocks close to the player
+        DrawShadows();
 
+        // Set viewport to window size to prevent rendering issues when resizing the window
         glViewport(0, 0, window->GetWidth(), window->GetHeight());
-
-        objShader->Bind();
         
         glm::mat4 viewProj = camera.GetViewProjectionMatrix(fov, 0.1f, 1000.0f);
-        objShader->SetUniformMat4("u_View", camera.GetViewMatrix(fov, 0.1f, 1000.f));
-        objShader->SetUniformMat4("u_ViewProj", viewProj);
-        objShader->SetUniformMat4("u_LightSpaceMatrix", lightSpaceMatrix);
-
         float fogEnd = renderDistance * 0.8;
         float fogStart = renderDistance * 0.5f;
-        objShader->SetUniformFloat("fogStart", fogStart);
-        objShader->SetUniformFloat("fogEnd", fogEnd);
-        objShader->SetUniformFloat3("fogColor", {0.8f, 0.8f, 0.8f});
-
-        objShader->SetUniformFloat3("viewPos", camera.position);
-        objShader->SetUniformFloat3("lightPos", lightPos);
-        objShader->SetUniformFloat3("sunPos", sunPos);
-        objShader->SetUniformFloat3("viewPos", camera.position);
-        objShader->SetUniformFloat3("lightColor", { 1.0f, 1.0f, 1.0f });
-        objShader->SetUniformFloat3("objectColor", objectColor);
-
-        if (texArray) {
-            texArray->Bind(0);
-            objShader->SetUniformInt("u_Textures", 0);
-        }
+        SetObjectShader(viewProj, lightSpaceMatrix, fogStart, fogEnd);
 
         shadowMap->BindTexture(1);
         objShader->SetUniformInt("u_ShadowMap", 1);
 
+        // Draw calls
+        //DrawShadows();
         world->Draw(objShader, camera.position, camera.orientation, renderDistance);
         DrawOutline(viewProj);
         if(drawChunkOutlines) DrawChunkOutlines(viewProj, camera.position, camera.orientation);
