@@ -83,6 +83,11 @@ namespace e
         Chunk* nzp = world->GetChunk({position.x, 0, position.z + CHUNK_SIZE});
         Chunk* nzn = world->GetChunk({position.x, 0, position.z - CHUNK_SIZE});
 
+        Chunk* dxp = world->GetChunk({position.x + CHUNK_SIZE, 0, position.z + CHUNK_SIZE});
+        Chunk* dxn = world->GetChunk({position.x - CHUNK_SIZE, 0, position.z - CHUNK_SIZE});
+        Chunk* dzp = world->GetChunk({position.x - CHUNK_SIZE, 0, position.z + CHUNK_SIZE});
+        Chunk* dzn = world->GetChunk({position.x + CHUNK_SIZE, 0, position.z - CHUNK_SIZE});
+
         for (int x = 0; x < CHUNK_SIZE; x++) {
             for (int y = 0; y < CHUNK_HEIGHT; y++) {
                 for (int z = 0; z < CHUNK_SIZE; z++) {
@@ -96,23 +101,32 @@ namespace e
                         int nx = x + ox;
                         int ny = y + oy;
                         int nz = z + oz;
-
-                        // If we look BELOW the bottom of the world, return a solid "Boundary" block
-                        if (ny < 0) return e::BlockID::STONE; // Or a specific BEDROCK ID
-
-                        // If we look ABOVE the sky, it's definitely AIR
+                                        
+                        if (ny < 0) return e::BlockID::STONE;
                         if (ny >= CHUNK_HEIGHT) return e::BlockID::AIR;
-
-                        if (nx >= 0 && nx < CHUNK_SIZE && nz >= 0 && nz < CHUNK_SIZE) 
-                            return blocks[nx][ny][nz];
-
-                        // Chunk boundary checks
-                        if (nx >= CHUNK_SIZE) return nxp ? nxp->blocks[0][ny][nz] : e::BlockID::AIR;
-                        if (nx < 0)           return nxn ? nxn->blocks[CHUNK_SIZE - 1][ny][nz] : e::BlockID::AIR;
-                        if (nz >= CHUNK_SIZE) return nzp ? nzp->blocks[nx][ny][0] : e::BlockID::AIR;
-                        if (nz < 0)           return nzn ? nzn->blocks[nx][ny][CHUNK_SIZE - 1] : e::BlockID::AIR;
-
-                        return e::BlockID::AIR;
+                                        
+                        Chunk* targetChunk = nullptr;
+                                        
+                        // Check X and Z together to find diagonals vs cardinals
+                        if (nx >= 0 && nx < CHUNK_SIZE && nz >= 0 && nz < CHUNK_SIZE) {
+                            return blocks[nx][ny][nz]; // Internal
+                        } 
+                        else if (nx >= CHUNK_SIZE && nz >= CHUNK_SIZE) targetChunk = dxp; // Diagonal (+, +)
+                        else if (nx < 0 && nz < 0)                     targetChunk = dxn; // Diagonal (-, -)
+                        else if (nx < 0 && nz >= CHUNK_SIZE)           targetChunk = dzp; // Diagonal (-, +)
+                        else if (nx >= CHUNK_SIZE && nz < 0)           targetChunk = dzn; // Diagonal (+, -)
+                        else if (nx >= CHUNK_SIZE)                     targetChunk = nxp; // East
+                        else if (nx < 0)                               targetChunk = nxn; // West
+                        else if (nz >= CHUNK_SIZE)                     targetChunk = nzp; // North
+                        else if (nz < 0)                               targetChunk = nzn; // South
+                    
+                        if (!targetChunk) return e::BlockID::AIR;
+                    
+                        // This handles the wrap-around (e.g., nx = 16 becomes 0, nx = -1 becomes 15)
+                        int localX = (nx % CHUNK_SIZE + CHUNK_SIZE) % CHUNK_SIZE;
+                        int localZ = (nz % CHUNK_SIZE + CHUNK_SIZE) % CHUNK_SIZE;
+                    
+                        return targetChunk->blocks[localX][ny][localZ];
                     };
 
                     // Rule: Render face if:
